@@ -367,6 +367,7 @@
 
   // ---------------------------------------------------------------- SCR-022 informe (HackerOne, SG3)
   function pintarInforme() {
+    if (!s.plantillasPedidas) { s.plantillasPedidas = true; cargarPlantillas(); }
     const validados = s.findings.filter((f) => f.estado !== "idea");
     const sel = $("#sg-inf-sel");
     if (!validados.some((f) => f.id === s.informe.fid)) s.informe.fid = validados[0]?.id ?? null;
@@ -398,6 +399,33 @@
     for (const id of ["#sg-inf-guardar", "#sg-inf-exportar", "#sg-inf-copiar", "#sg-inf-reportado"]) $(id).disabled = generando || !md.value.trim();
     $("#sg-inf-reportado").hidden = f.estado === "reportado";
     md.readOnly = generando;
+  }
+
+  // API-055: la plantilla se elige también aquí; es el mismo ajuste (ui.informe_plantilla) que en Ajustes.
+  async function cargarPlantillas() {
+    try { s.plantillas = await F.api("/seguridad/plantillas-informe"); } catch { s.plantillas = null; }
+    pintarPlantillas();
+  }
+  function pintarPlantillas() {
+    const sel = $("#sg-inf-plantilla");
+    const p = s.plantillas;
+    sel.closest("label").hidden = !p;
+    if (!p) return;
+    const orden = ["hackerone", "bugcrowd", "breve", "personalizada"].filter((k) => p.plantillas[k]);
+    sel.innerHTML = orden.map((k) => `<option value="${k}">${E(T("if.informe_plantilla." + k))}</option>`).join("");
+    sel.value = p.activa.id;
+    const nota = $("#sg-inf-plantilla-nota");
+    const propiaVacia = p.activa.id === "personalizada" && !p.plantillas.personalizada.estructura;
+    nota.hidden = !propiaVacia;
+    nota.textContent = propiaVacia ? T("seg.inf.plantilla_vacia") : "";
+    sel.title = p.activa.estructura;
+  }
+  async function cambiarPlantilla(id) {
+    try {
+      await F.api("/ajustes", { method: "PUT", body: { "ui.informe_plantilla": id } });
+      F.ajustes["ui.informe_plantilla"] = id;
+    } catch (x) { msg("#sg-inf-msg", errorTxt(x), "mal"); }
+    await cargarPlantillas();
   }
 
   async function generarInforme() {
@@ -489,6 +517,7 @@
     $("#sg-nuevo-manual").addEventListener("click", () => { s.nuevoManual = !s.nuevoManual; pintarHallazgos(); if (s.nuevoManual) $("#sg-manual [name=titulo]").focus(); });
     $("#sg-manual").addEventListener("submit", crearManual);
     $("#sg-manual-cancelar").addEventListener("click", () => { s.nuevoManual = false; pintarHallazgos(); });
+    $("#sg-inf-plantilla").addEventListener("change", (ev) => cambiarPlantilla(ev.target.value));
     $("#sg-inf-sel").addEventListener("change", (ev) => { s.informe.fid = Number(ev.target.value); $("#sg-inf-md").dataset.fid = ""; msg("#sg-inf-msg", ""); pintarInforme(); });
     $("#sg-inf-mas").addEventListener("click", () => { if (s.informe.enfoques.length < 4) { s.informe.enfoques.push(""); pintarInforme(); } });
     $("#sg-inf-generar").addEventListener("click", generarInforme);
@@ -524,6 +553,11 @@
     contenedorChat: () => $("#sg-chat"),
     alCambiarSelector() { if (s.eng && s.tab === "analisis") pintarAnalisis(); },
     // Rama 6: el gate (SG1) y los hallazgos (SG2) se repintan al cambiar la interfaz en Ajustes.
-    alCambiarInterfaz() { if (!enlazado) return; pintarPasos(); if (s.eng && s.tab === "hallazgos") pintarHallazgos(); },
+    alCambiarInterfaz() {
+      if (!enlazado) return;
+      pintarPasos();
+      if (s.eng && s.tab === "hallazgos") pintarHallazgos();
+      if (s.plantillasPedidas) cargarPlantillas();          // SG3 cambiado en Ajustes → el redactor lo refleja
+    },
   };
 })();

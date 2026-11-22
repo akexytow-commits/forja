@@ -79,6 +79,9 @@ plan. (Usa MOD-040 → MOD-013 con el modelo general y esfuerzo medio/extra.)
 ### API-053 `POST /findings/{id}/informe` `{ enfoques:[...] }` → genera/une el borrador de informe (DB-006b.informe_md).
 ### API-054 Integraciones MCP externas (Burp/Caido/ZAP del usuario): **opcionales**, **solo lectura** o
 con confirmación por acción (API-002b). Si no hay integración configurada, el modo funciona con pegar/importar.
+### API-055 `GET /seguridad/plantillas-informe` (añadido en Rama 6)
+Devuelve las plantillas de informe disponibles (HackerOne, Bugcrowd, breve y la **propia del usuario**)
+para que Ajustes y el redactor de informes (SCR-022) las ofrezcan.
 
 ## Ajustes / auditoría / export
 ### API-060 `GET/PUT /ajustes` (DB-001). Activar Nube: `PUT /ajustes` con `nube.activada=1` + guardar clave

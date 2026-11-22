@@ -130,11 +130,23 @@ def test_sg3_el_informe_sigue_la_plantilla_elegida(client, fake, plantilla, estr
     assert esperado in pedido and no not in pedido
 
 
-def test_plantillas_de_informe_para_ajustes(client):
+def test_api055_plantillas_de_informe_incluye_la_propia(client):
     client.put("/ajustes", json={"ui.informe_plantilla": "bugcrowd"})
     r = client.get("/seguridad/plantillas-informe").json()
-    assert set(r["plantillas"]) == {"hackerone", "bugcrowd", "breve"}
+    assert set(r["plantillas"]) == {"hackerone", "bugcrowd", "breve", "personalizada"}
+    assert r["plantillas"]["personalizada"] == {"nombre": "propia", "estructura": ""}      # aún sin escribir
     assert r["activa"]["id"] == "bugcrowd" and "## Clasificación VRT" in r["activa"]["estructura"]
+    client.put("/ajustes", json={"ui.informe_plantilla": "personalizada", "ui.informe_estructura": "## A\n## B"})
+    r = client.get("/seguridad/plantillas-informe").json()
+    assert r["plantillas"]["personalizada"]["estructura"] == "## A\n## B"
+    assert r["activa"] == {"id": "personalizada", "nombre": "personalizada", "estructura": "## A\n## B"}
+
+
+def test_api055_el_redactor_ofrece_las_plantillas():
+    html = (UI / "index.html").read_text(encoding="utf-8")
+    js = (UI / "seguridad.js").read_text(encoding="utf-8")
+    assert 'id="sg-inf-plantilla"' in html
+    assert "/seguridad/plantillas-informe" in js and '"ui.informe_plantilla": id' in js
 
 
 # --- La UI tiene una forma para cada opción ------------------------------------------------------------

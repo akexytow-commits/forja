@@ -511,10 +511,15 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
 
     @app.get("/seguridad/plantillas-informe")
     async def plantillas_informe():
-        """SG3: plantillas de informe de serie (para elegir y para partir de una al personalizar)."""
+        """API-055 (SG3): plantillas de informe — HackerOne, Bugcrowd, breve y la propia del usuario — para que
+        Ajustes y el redactor (SCR-022) las ofrezcan. La propia va vacía si aún no se ha escrito (el redactor
+        usaría entonces HackerOne)."""
         from .modes.seguridad import PLANTILLAS_INFORME, plantilla_informe
         nombre, estructura = plantilla_informe(db)
-        return {"plantillas": {k: {"nombre": n, "estructura": e} for k, (n, e) in PLANTILLAS_INFORME.items()},
+        plantillas = {k: {"nombre": n, "estructura": e} for k, (n, e) in PLANTILLAS_INFORME.items()}
+        plantillas["personalizada"] = {"nombre": "propia",
+                                       "estructura": (db.get_setting("ui.informe_estructura", "") or "").strip()}
+        return {"plantillas": plantillas,
                 "activa": {"id": db.get_setting("ui.informe_plantilla", "hackerone"), "nombre": nombre,
                            "estructura": estructura}}
 

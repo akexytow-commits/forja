@@ -60,7 +60,7 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
   (`~40 s`, `~2 min`). El evento lleva también `thinking_ms`; `messages` guarda `gen_ms` y `thinking_ms` (migración 008).
   En la Nube los tokens en vivo son aproximados (por caracteres).
 - **Apariencia** en Ajustes es la versión básica (presets cerrados); el estudio completo con contraste y fondos es la Rama 8.
-- **Spec rev (12)**: copiada a `docs/spec`. Doc 04 (rev. 12 recoge el prompt de medio implementado y los tiempos medidos): registro 2507, etiquetas reales, override de Seguridad, tope de razonamiento y mejora del prompt de medio. Doc 07: eventos `tope_razonamiento` y `reclasificar`. TST-032b.
+- **Spec rev (13)**: copiada a `docs/spec` (doc 07: API-055). Doc 04 (rev. 12 recoge el prompt de medio implementado y los tiempos medidos): registro 2507, etiquetas reales, override de Seguridad, tope de razonamiento y mejora del prompt de medio. Doc 07: eventos `tope_razonamiento` y `reclasificar`. TST-032b.
 - **Doc 21 (Política de Restricciones) aplicado** a `backend/prompts/scripts.txt`, `seguridad.txt` y `tareas.txt`
   (2026-11-22): tono de experto autorizado, directo, sin moralinas ni descargos; en Seguridad, la lista de lo permitido
   sobre objetivos en alcance (recon, fuzzing, prueba de credenciales si el programa lo permite, PoC mínima, Metasploit/
@@ -142,7 +142,7 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
   queda a mano. La instalación de WSL se lanza con `Start-Process -Verb RunAs`, así que Windows pide su propio OK
   además del de FORJA.
 
-- **Rama 6**: `GET /seguridad/plantillas-informe` (no está en el doc 07) da las plantillas de informe de serie a Ajustes › Interfaces. Claves extra: `ui.informe_estructura` (la plantilla propia de SG3, hasta 4000 caracteres) y `ui.protocolo_respondido` (fecha). Además de lo que pide SC2 se añade un resaltado de sintaxis mínimo (`ForjaMD.resaltar`): antes los bloques no tenían color, así que las tres opciones no se habrían distinguido. El panel de proyectos fijo se oculta por debajo de 720 px de ancho.
+- **Rama 6**: **API-055** `GET /seguridad/plantillas-informe` (en el doc 07 desde la rev. 13) da las plantillas de informe (HackerOne, Bugcrowd, breve y la propia) a Ajustes › Interfaces y al redactor (SCR-022), que tiene su propio selector de plantilla: es el mismo ajuste `ui.informe_plantilla`. Claves extra: `ui.informe_estructura` (la plantilla propia de SG3, hasta 4000 caracteres) y `ui.protocolo_respondido` (fecha). Además de lo que pide SC2 se añade un resaltado de sintaxis mínimo (`ForjaMD.resaltar`): antes los bloques no tenían color, así que las tres opciones no se habrían distinguido. El panel de proyectos fijo se oculta por debajo de 720 px de ancho.
 
 ## Personalización aplicada (13-protocolo-personalizacion.md)
 Protocolo respondido el 2026-11-22 (Rama 6). Guardado en `settings` (`ui.*`, migración 010); se cambia y se

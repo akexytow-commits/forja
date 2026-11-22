@@ -616,5 +616,7 @@
   "seg.paso.3": "Autorización",
   "seg.paso.2.ayuda": "Léelas antes de seguir: son las que FORJA aplica como código en este engagement.",
   "seg.paso.atras": "Atrás",
-  "seg.paso.siguiente": "Siguiente"
+  "seg.paso.siguiente": "Siguiente",
+  "seg.inf.plantilla": "Plantilla",
+  "seg.inf.plantilla_vacia": "Tu plantilla propia está vacía: se usará HackerOne. Escríbela en Ajustes › Interfaces."
 }
