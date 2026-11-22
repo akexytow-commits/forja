@@ -341,7 +341,7 @@ class MotorChat:
             if kb_id is not None:
                 # API-073 interno: se embebe la pregunta y se recuperan los top-k fragmentos por coseno.
                 try:
-                    rag = await self.kb.buscar(kb_id, texto)
+                    rag = await self.kb.buscar(kb_id, texto, self.kb.k_chat())
                 except KBError as e:
                     yield error(e.codigo, e.mensaje)
                     return

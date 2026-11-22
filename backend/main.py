@@ -76,6 +76,7 @@ CLAVES_CERRADAS = {
     "ui.tareas_carga": ("0", "1"),                                          # ST2
     "ui.aviso_escalado": ("modal-nube+banner-justo", "modal", "banner"),    # SE1
     "ui.ajustes": ("pestanas", "pagina"),                                   # SA1
+    "kb.k": tuple(str(i) for i in range(1, 11)),                           # top-k del chat con base (doc 24)
 }
 MAX_INFORME_ESTRUCTURA = 4000   # SG3 "editable": estructura propia del informe (Markdown)
 
@@ -454,7 +455,7 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
     @app.get("/kb")
     async def kb_listar():
         return {"bases": motor.kb.listar(), "activa": db.get_setting("estado.kb", ""),
-                "modelo_embeddings": motor.kb.etiqueta_embed(),
+                "modelo_embeddings": motor.kb.etiqueta_embed(), "k": motor.kb.k_chat(),
                 "selector_nativo": app.state.elegir_carpeta is not None}
 
     @app.post("/kb", status_code=201)

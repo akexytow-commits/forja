@@ -759,5 +759,6 @@
   "kb.fuentes.consultada": "consultada",
   "kb.fuentes.de": "Base «{nombre}»",
   "kb.faltan_embeddings": "Falta el modelo de embeddings ({modelo}). Descárgalo en Estado del sistema.",
-  "kb.doc_indexado1": "1 fragmento"
+  "kb.doc_indexado1": "1 fragmento",
+  "kb.k": "Fragmentos por pregunta"
 }

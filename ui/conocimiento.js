@@ -14,7 +14,7 @@
 
   const st = {
     bases: [], activa: null, ultima: null, sel: null, detalle: null, tab: "pegar",
-    modelo: "nomic-embed-text", selectorNativo: false, progreso: null, msg: null, resultados: null,
+    modelo: "nomic-embed-text", k: 6, selectorNativo: false, progreso: null, msg: null, resultados: null,
   };
   const base = (id) => st.bases.find((b) => b.id === id) || null;
 
@@ -24,6 +24,7 @@
       const r = await A().api("/kb");
       st.bases = r.bases;
       st.modelo = r.modelo_embeddings;
+      st.k = r.k;
       st.selectorNativo = r.selector_nativo;
       const id = parseInt(r.activa, 10);
       st.activa = base(id) ? id : null;
@@ -141,6 +142,9 @@
   function pintarLista() {
     const ul = $("#kb-lista");
     $("#kb-modelo").textContent = fmt("kb.modelo", { modelo: st.modelo });
+    const sel = $("#kb-k");
+    if (!sel.options.length) sel.innerHTML = Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+    sel.value = String(st.k);
     if (!st.bases.length) { ul.innerHTML = `<li class="pop-vacio">${esc(t("kb.vacio"))}</li>`; return; }
     ul.innerHTML = st.bases.map((b) => `<li><button type="button" class="kb-item${b.id === st.sel ? " sel" : ""}" data-sel="${b.id}">` +
       `<strong>${esc(b.nombre)}${b.id === st.activa ? ` <span class="kb-pastilla">${esc(t("kb.en_uso"))}</span>` : ""}</strong>` +
@@ -327,6 +331,10 @@
     $("#kb-cerrar").addEventListener("click", cerrar);
     $("#scr-050").addEventListener("click", (e) => { if (e.target.id === "scr-050") cerrar(); });
     $("#kb-nueva").addEventListener("submit", crear);
+    $("#kb-k").addEventListener("change", (e) => {       // doc 24 rev. 18: top-k del chat (5–6 recomendado)
+      st.k = parseInt(e.target.value, 10);
+      A().api("/ajustes", { method: "PUT", body: { "kb.k": e.target.value } }).catch((er) => aviso(er.message, true));
+    });
     $("#btn-kb-usar").addEventListener("click", alternarUso);
     $("#btn-kb-elegir").addEventListener("click", abrirPop);
     $("#kb-gestionar").addEventListener("click", () => abrir(st.activa));

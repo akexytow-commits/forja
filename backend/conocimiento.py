@@ -30,7 +30,7 @@ TOKENS_FRAGMENTO = 512
 TOKENS_SOLAPE = 64
 CHARS_POR_TOKEN = 3.5         # = router.tokens_aprox
 LOTE_EMBED = 8                # fragmentos por llamada a /api/embed (y por evento de progreso)
-K_DEFECTO = 4
+K_DEFECTO = 6          # doc 24 rev. 18: 5–6 recomendado (con 4, un ejemplo bueno podía quedar fuera)
 K_MAX = 20
 
 EXT_DOCS = {".md", ".markdown", ".txt", ".pdf"}                       # FR-082
@@ -426,6 +426,13 @@ class BaseConocimiento:
         return {"kb_id": kb_id, "nombre": kb["nombre"], "fragmentos": fragmentos, "indexada": True}
 
     # --- para el chat --------------------------------------------------------
+    def k_chat(self) -> int:
+        """Top-k del chat con base activa: ajuste `kb.k` (1–10), por defecto K_DEFECTO."""
+        try:
+            return max(1, min(int(self.db.get_setting("kb.k", "") or K_DEFECTO), 10))
+        except ValueError:
+            return K_DEFECTO
+
     @staticmethod
     def k_para(presupuesto_tokens: int) -> int:
         """Cuántos fragmentos caben: como mucho K_DEFECTO y sin pasar de ~la mitad del contexto libre."""

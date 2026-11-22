@@ -366,6 +366,7 @@ def test_ui_scr050_toggle_y_fuentes_citadas(tmp_path, fake):
             # Toggle apagado: el siguiente mensaje no lleva kb_id
             await ev("document.querySelector('#btn-kb-usar').click()")
             out["apagado"] = await ev("document.querySelector('#btn-kb-usar').getAttribute('aria-pressed')")
+            out["k"] = await ev("document.querySelector('#kb-k').value")
             out["errs"] = await ev("window.__errs")
             await asyncio.sleep(1)          # guardarEstado() va con 250 ms de retardo: que llegue antes de cerrar
             return out
@@ -374,7 +375,7 @@ def test_ui_scr050_toggle_y_fuentes_citadas(tmp_path, fake):
         assert "fragmento" in r["doc"]
         assert r["chip"] == ["Usar base: Flipper Zero", "true"]
         assert r["boton"] == "Ver fuentes citadas (1)" and "[1]" in r["citada"] and "Guía SubGHz" in r["citada"]
-        assert r["apagado"] == "false"
+        assert r["apagado"] == "false" and r["k"] == "6"
         assert any(c["messages"][-1]["content"].startswith("[Base de conocimiento") for c in fake.chats)
 
         async def tras_recargar(ev, esperar):        # las fuentes sobreviven: vienen de messages.fuentes
@@ -389,3 +390,22 @@ def test_salud_no_toma_el_de_embeddings_por_el_modelo_cargado(client, fake):
     assert client.get("/salud").json()["modelo_cargado"] == "qwen2.5-coder:3b"
     fake.cargados = [EMBED]
     assert client.get("/salud").json()["modelo_cargado"] is None
+
+
+def test_top_k_del_chat_por_defecto_6_y_ajustable(client, fake):
+    """Doc 24 rev. 18: top-k recomendado 5–6; `kb.k` lo ajusta (1–10)."""
+    kb = crear_base(client)
+    for i in range(8):
+        client.post(f"/kb/{kb}/documentos", json={"contenido": f"Documento {i}: " + SUBGHZ, "titulo": f"D{i}",
+                                                  "origen": f"docs/d{i}.md"})
+    indexar(client, kb)
+
+    def n_fuentes():
+        r = client.post("/chat", json={"modo": "scripts", "tier": "pequeno", "esfuerzo": "bajo",
+                                       "texto": "frecuencia SubGHz", "kb_id": kb, "forzar": True})
+        return len([d for e, d in eventos(r.text) if e == "fuentes"][0]["fragmentos"])
+
+    assert n_fuentes() == 6
+    assert client.put("/ajustes", json={"kb.k": "2"}).status_code == 200
+    assert n_fuentes() == 2
+    assert client.put("/ajustes", json={"kb.k": "50"}).json()["error"]["codigo"] == "AJUSTE_INVALIDO"

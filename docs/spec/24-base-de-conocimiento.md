@@ -65,6 +65,20 @@ problema). Fuentes recomendadas:
 - Pruebas: **TST-083** (indexar crea fragmentos con embeddings), **TST-084** (buscar devuelve fragmentos
   relevantes por coseno), **TST-085** (el chat con base activa inyecta contexto y cita fuentes).
 
+## Notas de implementación (reales, verificadas en el equipo)
+- **Tipos de archivo aceptados:** además de `.md/.txt/.pdf`, también **`.c/.h/.fam`** — los ejemplos de
+  Flipper son código.
+- **Citas con modelos pequeños:** la instrucción de citar se coloca **también después de la pregunta**
+  (el 3-4B hace más caso a lo último); así cita de forma fiable.
+- **`kb_documents` guarda el texto extraído**, para que Reindexar no tenga que releer los archivos.
+- **Endpoints extra:** ver y borrar bases y documentos (además de API-070…073).
+- **Alias `embeddings`** vive en el tier `pequeno` (la tabla `models` no admite otro valor); es inocuo.
+- **Top-k por defecto = 4.** Recomendado **5–6** para casos flojos (un ejemplo bueno puede quedar 4.º); en
+  CPU apenas cuesta.
+- **Rendimiento medido:** paquete Flipper (Momentum local) = 142 archivos → 366 fragmentos, indexado ~529 s
+  (una sola vez). Búsqueda ~0,6 s. Chat con base activa ~28 s. nomic (0,39 GB) convive con el chat (2,4 GB).
+- **Semilla Flipper:** se importa de una **copia local del firmware** (no descarga nada).
+
 ## Orden de construcción
 **Rama 9 (post-v1 / v1.1).** Primero el embebido + almacén + búsqueda (backend), luego la pantalla y el
 toggle, y por último el importador del paquete Flipper. No toca los guardarraíles de Seguridad.

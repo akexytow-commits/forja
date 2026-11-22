@@ -164,7 +164,8 @@ tu proyecto…) que sin ella, sin cambiar de modelo. Medido en este portátil, m
 **Usarla en el chat**
 - Abajo, junto a Modelo y Esfuerzo, el botón **Base: Usar base: Flipper Zero** la activa o desactiva para
   tus mensajes, y la flecha ▾ elige otra o ninguna. Funciona en Scripts y en el chat de Seguridad.
-- Con la base activa, cada mensaje recupera los 4 fragmentos más parecidos y se los pasa al modelo. Bajo la
+- Con la base activa, cada mensaje recupera los 6 fragmentos más parecidos y se los pasa al modelo (cámbialo
+  en Bases de conocimiento → **Fragmentos por pregunta**). Bajo la
   respuesta, **Ver fuentes citadas** muestra cuáles usó (las citadas, marcadas) y su texto.
 - **Reindexar** rehace todos los vectores (por ejemplo, si cambias de modelo de embeddings).
 - Basura dentro, basura fuera: mete los docs **oficiales** y buenos ejemplos.
