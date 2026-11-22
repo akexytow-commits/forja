@@ -84,6 +84,14 @@ debe poder responder "¿qué satisface FR-012?" mirando los catálogos.
   convertirlas en tareas; degrada a lista anidada en hardware limitado. (copia: Obsidian/Xmind) →
   `17-...md` P5, SCR-032
 
+### Base de Conocimiento (RAG local, MOD-120) · ver `24-...md`
+- **FR-082** Crear/gestionar **bases de conocimiento**; añadir documentos (pegar o importar `.md/.txt/.pdf`
+  o una carpeta). → SCR-050, API-070/071
+- **FR-083** **Indexar**: trocear + embeber con `nomic-embed-text` (CPU), vectores en SQLite. → API-072, DB-012
+- **FR-084** **Recuperar** top-k por coseno e **inyectar en el contexto con fuentes citadas**; toggle en el
+  compositor para activar la base en la consulta. → BTN-106/107, API-073
+- **FR-085** Importar un **paquete semilla de Flipper Zero** (docs oficiales de desarrollo). → `24-...md`
+
 ### Escalado / Nube
 - **FR-050** El **estimador** calcula un "tamaño de tarea" (tokens de entrada previstos, longitud de salida
   pedida, complejidad) y un veredicto: *cabe en local* | *justo* | *recomendado Nube*. → MOD-050, `05-...md`

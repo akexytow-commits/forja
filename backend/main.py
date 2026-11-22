@@ -38,11 +38,12 @@ from .modes.laboratorio import BACKENDS as LAB_BACKENDS, Laboratorio, LabError
 from .modes import proyectos as proy_mod
 from .modes.proyectos import Plantillas, ProyectoError
 from .cloud_client import MODELOS_NUBE, ClienteNube, NubeError
-from .chat import MotorChat, sse
+from .chat import MotorChat, error as sse_error, sse
+from .conocimiento import KBError
 from .config import HOST, OLLAMA_URL, PORT, TOKEN_HEADER, UI_DIR, data_dir
 from .db import DB, ahora
 from .ollama_client import (ModeloFaltante, OllamaCaido, OllamaClient, OllamaError,
-                            arrancar_ollama, ejecutable_ollama, normalizar)
+                            arrancar_ollama, ejecutable_ollama, es_embeddings, normalizar)
 from .router import FAMILIA, OVERRIDE_ESFUERZO
 from .sistema import disco_libre_mb, ram_libre_mb
 
@@ -122,6 +123,32 @@ class ChatIn(BaseModel):
     adjuntos: list[Any] = []
     engagement_id: int | None = None
     forzar: bool = False  # el usuario ya decidió seguir pese al aviso del estimador
+    kb_id: int | None = None  # BTN-106: base de conocimiento activa (doc 24)
+
+
+class KBIn(BaseModel):
+    nombre: str = Field(max_length=80)
+    descripcion: str = Field("", max_length=500)
+
+
+class KBDocIn(BaseModel):
+    """API-071: pegar (contenido), subir un archivo (nombre + contenido_b64) o importar una ruta del equipo."""
+    origen: str | None = Field(None, max_length=500)
+    titulo: str | None = Field(None, max_length=200)
+    contenido: str | None = Field(None, max_length=2_000_000)
+    ruta: str | None = Field(None, max_length=1000)
+    nombre: str | None = Field(None, max_length=255)
+    contenido_b64: str | None = Field(None, max_length=7_200_000)
+    semilla: bool = False   # FR-085: paquete Flipper Zero desde una copia local del firmware
+
+
+class KBIndexarIn(BaseModel):
+    todo: bool = False      # BTN-105 Reindexar: todos los documentos, no solo los pendientes
+
+
+class KBBuscarIn(BaseModel):
+    query: str = Field(max_length=4000)
+    k: int = Field(4, ge=1, le=20)
 
 
 class PreviaIn(BaseModel):
@@ -381,7 +408,8 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
             "ollama_version": version,
             "ollama_instalado": ejecutable_ollama() is not None,
             "modelos_instalados": instalados,
-            "modelo_cargado": cargados[0] if cargados else None,
+            # el de embeddings (doc 24) puede quedar residente junto al del chat: no es «el modelo cargado»
+            "modelo_cargado": next((m for m in cargados if not es_embeddings(m)), None),
             "modelos": modelos,
             "faltan_necesarios": bool(version) and any(m["necesario"] and not m["instalado"] for m in modelos),
             "ram_libre_mb": ram_libre_mb(),
@@ -414,9 +442,71 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
     @app.post("/chat")
     async def chat(cuerpo: ChatIn):
         gen = motor.generar(cuerpo.sesion_id, cuerpo.modo, cuerpo.tier, cuerpo.esfuerzo, cuerpo.texto, cuerpo.forzar,
-                            engagement_id=cuerpo.engagement_id)
+                            engagement_id=cuerpo.engagement_id, kb_id=cuerpo.kb_id)
         return StreamingResponse(gen, media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    # --- API-070…073 Base de Conocimiento (RAG local, doc 24) -----------------------
+    @app.exception_handler(KBError)
+    async def _kb_error(_: Request, e: KBError):
+        return _err(e.status, e.codigo, e.mensaje)
+
+    @app.get("/kb")
+    async def kb_listar():
+        return {"bases": motor.kb.listar(), "activa": db.get_setting("estado.kb", ""),
+                "modelo_embeddings": motor.kb.etiqueta_embed(),
+                "selector_nativo": app.state.elegir_carpeta is not None}
+
+    @app.post("/kb", status_code=201)
+    async def kb_crear(cuerpo: KBIn):
+        return motor.kb.crear(cuerpo.nombre, cuerpo.descripcion)
+
+    @app.get("/kb/{kb_id}")
+    async def kb_obtener(kb_id: int):
+        return {**motor.kb.obtener(kb_id), "lista": motor.kb.documentos(kb_id)}   # `documentos` = el recuento
+
+    @app.delete("/kb/{kb_id}", status_code=204)
+    async def kb_borrar(kb_id: int):
+        motor.kb.borrar(kb_id)
+
+    @app.post("/kb/{kb_id}/documentos", status_code=201)
+    async def kb_documentos(kb_id: int, cuerpo: KBDocIn):
+        return await asyncio.to_thread(
+            motor.kb.anadir, kb_id, contenido=cuerpo.contenido, titulo=cuerpo.titulo, origen=cuerpo.origen,
+            ruta=cuerpo.ruta, nombre=cuerpo.nombre, contenido_b64=cuerpo.contenido_b64, semilla=cuerpo.semilla)
+
+    @app.delete("/kb/{kb_id}/documentos/{doc_id}", status_code=204)
+    async def kb_documento_borrar(kb_id: int, doc_id: int):
+        motor.kb.borrar_documento(kb_id, doc_id)
+
+    @app.post("/kb/{kb_id}/indexar")
+    async def kb_indexar(kb_id: int, cuerpo: KBIndexarIn | None = None):
+        motor.kb.obtener(kb_id)          # 404 antes de abrir el stream
+
+        async def eventos():
+            try:
+                async for ev in motor.kb.indexar(kb_id, todo=bool(cuerpo and cuerpo.todo)):
+                    yield sse(ev.pop("tipo"), ev)
+            except KBError as e:
+                yield sse_error(e.codigo, e.mensaje)
+            except ModeloFaltante as e:
+                yield sse_error("MODELO_FALTANTE", f"Falta el modelo de embeddings {e.etiqueta}: descárgalo "
+                                f"(ollama pull {e.etiqueta}).", etiqueta=e.etiqueta, alias="embeddings")
+            except OllamaCaido:
+                yield sse_error("OLLAMA_CAIDO", "Ollama no responde en localhost:11434.")
+            except OllamaError as e:
+                yield sse_error("OLLAMA_ERROR", f"Ollama devolvió un error: {e}")
+        return StreamingResponse(eventos(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    @app.post("/kb/{kb_id}/buscar")
+    async def kb_buscar(kb_id: int, cuerpo: KBBuscarIn):
+        try:
+            return await motor.kb.buscar(kb_id, cuerpo.query, cuerpo.k)
+        except ModeloFaltante as e:
+            raise ApiError(409, "MODELO_FALTANTE", f"Falta el modelo de embeddings {e.etiqueta}.")
+        except OllamaCaido:
+            raise ApiError(503, "OLLAMA_CAIDO", "Ollama no responde en localhost:11434.")
 
     # --- API-032 verificador de código (MOD-110, doc 23) ------------------------------
     @app.exception_handler(verificador.VerificadorError)

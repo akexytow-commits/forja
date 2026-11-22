@@ -12,7 +12,7 @@ pantallas:
     nombre: Shell
     modulo: MOD-001
     descripcion: Layout maestro con selector de modo (arriba) y de modelo/esfuerzo (abajo) + compositor.
-    contiene_botones: [BTN-010, BTN-011, BTN-012, BTN-020, BTN-021, BTN-022, BTN-023, BTN-024, BTN-025, BTN-100]
+    contiene_botones: [BTN-010, BTN-011, BTN-012, BTN-020, BTN-021, BTN-022, BTN-023, BTN-024, BTN-025, BTN-100, BTN-106, BTN-107]
     transiciones:
       - "pestaña scripts -> SCR-010"
       - "pestaña seguridad -> (si no autorizado) SCR-020 | (si autorizado) SCR-021"
@@ -107,6 +107,12 @@ pantallas:
     modulo: MOD-100
     descripcion: "Módulo final: presets de tema, color/acento, tipografía, densidad, fondo/imagen y vista previa en vivo sobre una maqueta con los dos selectores."
     contiene_botones: [BTN-095, BTN-096, BTN-097, BTN-098, BTN-099]
+
+  - id: SCR-050
+    nombre: Bases de conocimiento
+    modulo: MOD-120
+    descripcion: Crear bases de conocimiento (RAG), añadir/importar documentos, ver estado de indexado y reindexar. Importar el paquete semilla de Flipper Zero.
+    contiene_botones: [BTN-103, BTN-104, BTN-105]
 
   - id: SCR-030
     nombre: Captura de tareas

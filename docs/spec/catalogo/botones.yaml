@@ -540,6 +540,43 @@ botones:
     requisitos: [FR-081]
     prueba: TST-082
 
+  # --- Base de Conocimiento / RAG (ver 24-base-de-conocimiento.md) ---
+  - id: BTN-103
+    pantalla: SCR-050
+    etiqueta: "Nueva base"
+    accion: "Crear una base de conocimiento (p. ej. 'Flipper Zero')."
+    endpoint: "POST /kb"
+    requisitos: [FR-082]
+    prueba: TST-083
+  - id: BTN-104
+    pantalla: SCR-050
+    etiqueta: "Añadir documento"
+    accion: "Pegar texto o importar archivos (.md/.txt/.pdf) o una carpeta; o importar el paquete semilla de Flipper. Lanza el indexado."
+    endpoint: "POST /kb/{id}/documentos ; POST /kb/{id}/indexar"
+    requisitos: [FR-082, FR-083, FR-085]
+    prueba: TST-083
+  - id: BTN-105
+    pantalla: SCR-050
+    etiqueta: "Reindexar"
+    accion: "Vuelve a trocear y embeber los documentos de la base."
+    endpoint: "POST /kb/{id}/indexar"
+    requisitos: [FR-083]
+    prueba: TST-083
+  - id: BTN-106
+    pantalla: SCR-001
+    etiqueta: "Usar base de conocimiento"
+    accion: "Toggle en el compositor: activa el RAG en la consulta actual; al enviar se recuperan fragmentos top-k y se anteponen al contexto con citas."
+    endpoint: "POST /kb/{id}/buscar (interno al chat)"
+    requisitos: [FR-084]
+    prueba: TST-085
+  - id: BTN-107
+    pantalla: SCR-001
+    etiqueta: "Ver fuentes citadas"
+    accion: "Tras la respuesta, muestra qué fragmentos/fuentes de la base se usaron."
+    endpoint: null
+    requisitos: [FR-084]
+    prueba: TST-085
+
   # --- Telemetría de generación (ver 22-telemetria-generacion.md) ---
   - id: BTN-100
     pantalla: SCR-001

@@ -19,6 +19,7 @@ ollama.com al construir** (las etiquetas cambian). Recomendación para TU hardwa
 | `pequeno-general` | pequeno | `qwen3:4b-instruct-2507` | ~2.6 GB | **no (instruct)** | chat, Tareas, **Seguridad medio** |
 | `pequeno-razonador` | pequeno | `qwen3:4b-thinking-2507` | ~2.6 GB | **sí (solo razona)** | **Seguridad extra** (fase de razonar) |
 | `pequeno-codigo` | pequeno | `qwen2.5-coder:3b` | ~2.0 GB | no | autocompletar/snippets rápidos |
+| `embeddings` | n/a | `nomic-embed-text` | ~0.27 GB | no | base de conocimiento / RAG (doc 24); convive con el chat |
 | `grande-general` | grande | `qwen3:8b` | ~5.0 GB | sí | respuestas de más calidad |
 | `grande-codigo` | grande | `qwen2.5-coder:7b` | ~4.7 GB | no | scripts/firmware de más enjundia |
 | `nube-frontera` | nube | **tu suscripción de Claude vía Claude Code** | — | n/a | tareas enormes (firmware completo) |

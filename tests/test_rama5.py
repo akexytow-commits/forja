@@ -288,7 +288,7 @@ def test_tst063_migracion_008_conserva_datos(tmp_path, monkeypatch):
 
     monkeypatch.setattr(dbmod, "MIGRATIONS_DIR", reales)
     db2 = DB(ruta)
-    assert db2.schema_version() == 12   # 008 y las posteriores
+    assert db2.schema_version() == 13   # 008 y las posteriores
     assert db2.one("SELECT tokens_out, gen_ms FROM messages") == {"tokens_out": 99, "gen_ms": None}
     assert db2.one("SELECT nombre FROM projects")["nombre"] == "viejo"
     assert db2.one("SELECT tipo FROM audit_log")["tipo"] == "lab_accion"

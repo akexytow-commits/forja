@@ -124,7 +124,7 @@ def test_migracion_012_no_cambia_tu_tema(tmp_path, monkeypatch):
     db.set_setting("ui.acento", "azul")
     monkeypatch.setattr(dbmod, "MIGRATIONS_DIR", reales)
     db2 = DB(tmp_path / "forja.db")
-    assert db2.schema_version() == 12 and db2.get_setting("ui.acento") == "azul"
+    assert db2.schema_version() == 13 and db2.get_setting("ui.acento") == "azul"
     assert db2.get_setting("ui.fondo") == '{"tipo":"liso"}' and db2.get_setting("ui.animacion") == "1"
 
 

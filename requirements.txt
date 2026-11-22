@@ -5,3 +5,5 @@ pywebview>=5.0
 anthropic>=2.12
 keyring>=25.0
 pytest>=8.0
+numpy>=1.26
+pypdf>=4.0

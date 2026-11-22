@@ -40,6 +40,11 @@ NO_THINK = "/no_think"
 NUM_PREDICT_MIN_NO_THINK = 768   # = router.NUM_PREDICT_MIN_NO_THINK (doc 04 rev. 8)
 
 
+def es_embeddings(etiqueta: str) -> bool:
+    """Modelos de embeddings (nomic-embed-text, mxbai-embed…): no cuentan para «un solo modelo en RAM»."""
+    return "embed" in normalizar(etiqueta).split(":")[0]
+
+
 def es_qwen3(etiqueta: str) -> bool:
     """Modelos Qwen3 que razonan (híbridos o thinking). qwen2.5-coder y los qwen3 *instruct* no."""
     e = normalizar(etiqueta).lower()
@@ -173,13 +178,33 @@ class OllamaClient:
             raise OllamaCaido(str(e)) from e
 
     async def asegurar_unico(self, etiqueta: str) -> bool:
-        """Deja en RAM como mucho `etiqueta`. Devuelve True si habrá que cargarla."""
+        """Deja en RAM como mucho `etiqueta` (más el modelo de embeddings, doc 24: es pequeño y convive con el
+        chat). Devuelve True si habrá que cargarla."""
         etiqueta = normalizar(etiqueta)
         cargados = await self.cargados()
         for m in cargados:
-            if m != etiqueta:
+            if m != etiqueta and not es_embeddings(m):
                 await self.descargar_de_ram(m)
         return etiqueta not in cargados
+
+    # --- embeddings (doc 24, API-072/073) ------------------------------------
+    async def embed(self, etiqueta: str, textos: list[str], num_ctx: int = 8192) -> list[list[float]]:
+        """POST /api/embed: un vector por texto. num_ctx 8192 (el defecto de Ollama, 2048, corta fragmentos largos)."""
+        cuerpo = {"model": normalizar(etiqueta), "input": textos, "truncate": True, "keep_alive": KEEP_ALIVE,
+                  "options": {"num_ctx": num_ctx, "num_gpu": 0}}
+        try:
+            async with self._client(timeout=httpx.Timeout(10.0, read=600.0)) as c:
+                r = await c.post("/api/embed", json=cuerpo)
+        except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+            raise OllamaCaido(str(e)) from e
+        if r.status_code == 404:
+            raise ModeloFaltante(normalizar(etiqueta))
+        if r.status_code >= 400:
+            raise OllamaError(_mensaje_error(r.text))
+        vectores = r.json().get("embeddings") or []
+        if len(vectores) != len(textos):
+            raise OllamaError(f"/api/embed devolvió {len(vectores)} vectores para {len(textos)} textos.")
+        return vectores
 
     async def cargar(self, etiqueta: str) -> None:
         etiqueta = normalizar(etiqueta)

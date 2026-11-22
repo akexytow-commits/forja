@@ -149,6 +149,22 @@ settings (DB-001)   models (DB-007)   audit_log (DB-008)
 | instalado | INTEGER | 0/1 (si está en Ollama) |
 | notas | TEXT | |
 
+## DB-012 Base de Conocimiento (RAG, MOD-120, doc 24)
+`knowledge_bases`: id, nombre, descripcion, embed_modelo (`nomic-embed-text`), created_at.
+`kb_documents` (DB-012b): id, kb_id FK, origen (ruta/url/"pegado"), titulo, num_chunks, created_at.
+`kb_chunks` (DB-012c):
+| columna | tipo | notas |
+|---|---|---|
+| id | INTEGER PK | |
+| kb_id | INTEGER FK | |
+| doc_id | INTEGER FK→kb_documents | |
+| texto | TEXT | el fragmento (~512 tokens) |
+| origen | TEXT | para citar la fuente |
+| embedding | BLOB | vector 768-dim (float32) de nomic-embed-text |
+| orden | INTEGER | posición en el documento |
+> La similitud se calcula en Python (coseno con numpy) al buscar. Para un corpus modesto es suficiente; si
+> crece mucho, se puede añadir la extensión sqlite-vec más adelante.
+
 ## DB-008 `audit_log` — auditoría local (MOD-080)
 | columna | tipo | notas |
 |---|---|---|

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/ui/rama6.css">
   <link rel="stylesheet" href="/ui/verificador.css">
   <link rel="stylesheet" href="/ui/estudio.css">
+  <link rel="stylesheet" href="/ui/conocimiento.css">
   <script>window.FORJA_TOKEN = "__FORJA_TOKEN__";</script>
 </head>
 <body>
@@ -37,6 +38,7 @@
     <symbol id="i-carpeta" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
     <symbol id="i-plantilla" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 9h16M9 9v11" stroke="currentColor" stroke-width="2"/></symbol>
     <symbol id="i-exportar" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-libro" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 8h7M9 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="i-flecha" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </svg>
 
@@ -52,6 +54,7 @@
           <span class="punto"></span><span class="chip-txt" id="chip-txt">…</span>
         </button>
         <button class="icono-btn" id="btn-ajustes" type="button"><svg><use href="#i-engranaje"/></svg></button>
+        <button class="icono-btn" id="btn-kb" type="button" data-t-title="kb.abrir"><svg><use href="#i-libro"/></svg></button>
         <button class="icono-btn" id="btn-estudio" type="button"><svg><use href="#i-paleta"/></svg></button>
         <button class="icono-btn" id="btn-tema" type="button"><svg><use href="#i-luna"/></svg></button>
       </div>
@@ -353,6 +356,21 @@
           <span class="grupo-etq" data-t="esfuerzo.etiqueta"></span>
           <div class="seg" id="seg-esfuerzo" role="radiogroup"></div>
         </div>
+        <!-- BTN-106 Usar base de conocimiento (doc 24) -->
+        <div class="grupo" id="kb-grupo" hidden>
+          <span class="grupo-etq" data-t="kb.etiqueta"></span>
+          <div class="pop-ancla kb-ancla">
+            <div class="kb-chip">
+              <button class="boton-txt peq chip-proy" id="btn-kb-usar" type="button" aria-pressed="false"><svg><use href="#i-libro"/></svg><span id="btn-kb-txt"></span></button>
+              <button class="boton-txt peq kb-elegir" id="btn-kb-elegir" type="button" aria-expanded="false" data-t-title="kb.elegir"><svg class="flecha"><use href="#i-flecha"/></svg></button>
+            </div>
+            <div class="pop pop-arriba" id="pop-kb" hidden>
+              <div class="pop-cab"><strong data-t="kb.titulo"></strong></div>
+              <ul class="pop-lista" id="kb-pop-lista"></ul>
+              <button class="boton-txt peq pop-pie" type="button" id="kb-gestionar"><svg><use href="#i-libro"/></svg><span data-t="kb.gestionar"></span></button>
+            </div>
+          </div>
+        </div>
         <div class="linea-estado" id="linea-estado" aria-live="polite"></div>
       </div>
     </footer>
@@ -418,6 +436,28 @@
 
   <!-- SCR-040 Estudio de Apariencia (Rama 8): lo construye ui/estudio.js -->
   <div class="overlay estudio-overlay" id="scr-040" hidden></div>
+
+  <!-- SCR-050 Bases de conocimiento (MOD-120, doc 24): BTN-103 Nueva base · BTN-104 Añadir documento · BTN-105 Reindexar -->
+  <div class="overlay" id="scr-050" hidden>
+    <div class="panel panel-ancho kb-panel" role="dialog" aria-modal="true" aria-labelledby="kb-titulo">
+      <div class="kb-cab">
+        <h2 id="kb-titulo" class="titulo-con-icono"><svg><use href="#i-libro"/></svg><span data-t="kb.titulo"></span></h2>
+        <button class="icono-btn peq" type="button" id="kb-cerrar" aria-label="Cerrar">✕</button>
+      </div>
+      <p class="sub" data-t="kb.sub"></p>
+      <div class="kb-cuerpo">
+        <aside class="kb-lado">
+          <ul class="kb-lista" id="kb-lista"></ul>
+          <form class="kb-nueva" id="kb-nueva" autocomplete="off">
+            <input id="kb-nueva-nombre" type="text" maxlength="80" data-t-ph="kb.nueva.ph">
+            <button class="boton peq" type="submit" id="btn-kb-nueva"><svg><use href="#i-mas"/></svg><span data-t="kb.nueva"></span></button>
+          </form>
+          <p class="kb-modelo" id="kb-modelo"></p>
+        </aside>
+        <section class="kb-det" id="kb-det"></section>
+      </div>
+    </div>
+  </div>
 
   <!-- SCR-007 Ajustes (Rama 5 completa; SA1 = pestañas: Modelos / Nube / Apariencia / Rutas / Avanzado) -->
   <div class="overlay" id="scr-007" hidden>
@@ -581,6 +621,7 @@
   <script src="/ui/verificador.js"></script>
   <script src="/ui/estudio.js"></script>
   <script src="/ui/proyectos.js"></script>
+  <script src="/ui/conocimiento.js"></script>
   <script src="/ui/tareas.js"></script>
   <script src="/ui/academia.js"></script>
   <script src="/ui/seguridad.js"></script>

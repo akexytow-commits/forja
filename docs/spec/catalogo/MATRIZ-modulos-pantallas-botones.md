@@ -4,7 +4,7 @@
 > ingeniería: cada módulo, sus pantallas y **cada botón** con su acción, endpoint, estado y prueba.
 > No editar a mano; se regenera desde los catálogos.
 
-**Totales:** 16 módulos · 19 pantallas · 72 botones.
+**Totales:** 17 módulos · 20 pantallas · 77 botones.
 
 ## MOD-001 · App Shell  _(ui+backend)_
 Arranque, ventana, salud del sistema, enrutado de pantallas, estado global (modo/tier/esfuerzo).
@@ -26,6 +26,8 @@ Layout maestro con selector de modo (arriba) y de modelo/esfuerzo (abajo) + comp
 | BTN-024 | medio | esfuerzo=medio (thinking medium / razonar breve). | — | TST-006 |
 | BTN-025 | extra | esfuerzo=extra (thinking high / razonar a fondo). | — | TST-006 |
 | BTN-100 | Ver/plegar razonamiento | Muestra u oculta el bloque de 'thinking'. Junto al botón corre la línea de telemetría (tiempo, tokens, tok/s, ETA, fase). No es un botón de acción destructiva. | — | TST-079 |
+| BTN-106 | Usar base de conocimiento | Toggle en el compositor: activa el RAG en la consulta actual; al enviar se recuperan fragmentos top-k y se anteponen al contexto con citas. | POST /kb/{id}/buscar (interno al chat) | TST-085 |
+| BTN-107 | Ver fuentes citadas | Tras la respuesta, muestra qué fragmentos/fuentes de la base se usaron. | — | TST-085 |
 
 ## MOD-010 · Router de Modelos  _(backend)_
 Traduce (modo, tier, esfuerzo, tamaño) a modelo+parámetros (tabla determinista).
@@ -277,6 +279,20 @@ Módulo final: presets de tema, color/acento, tipografía, densidad, fondo/image
 | BTN-097 | Tipografía y densidad | Elegir fuente (sistema o concreta) y densidad (compacta/cómoda). | PUT /ajustes (ui.fuente, ui.densidad) | TST-073 |
 | BTN-098 | Fondo / imagen | Fondo liso, degradado o imagen local con opacidad (sin restar legibilidad). | PUT /ajustes (ui.fondo) | TST-073 |
 | BTN-099 | Vista previa / aplicar | Previsualiza en vivo sobre una maqueta con los dos selectores; al aplicar, persiste y la app repinta sin reiniciar. | PUT /ajustes | TST-073 |
+
+## MOD-120 · Base de Conocimiento (RAG)  _(backend+ui)_
+RAG local (doc 24): bases de conocimiento, indexado con nomic-embed-text, vectores en SQLite, recuperación top-k por coseno e inyección en el contexto del chat con fuentes citadas. Semilla Flipper Zero.
+- **Depende de:** MOD-011, MOD-013, MOD-060
+- **Requisitos:** FR-082, FR-083, FR-084, FR-085
+
+### SCR-050 · Bases de conocimiento
+Crear bases de conocimiento (RAG), añadir/importar documentos, ver estado de indexado y reindexar. Importar el paquete semilla de Flipper Zero.
+
+| Botón | Etiqueta | Acción | Endpoint | Prueba |
+|---|---|---|---|---|
+| BTN-103 | Nueva base | Crear una base de conocimiento (p. ej. 'Flipper Zero'). | POST /kb | TST-083 |
+| BTN-104 | Añadir documento | Pegar texto o importar archivos (.md/.txt/.pdf) o una carpeta; o importar el paquete semilla de Flipper. Lanza el indexado. | POST /kb/{id}/documentos ; POST /kb/{id}/indexar | TST-083 |
+| BTN-105 | Reindexar | Vuelve a trocear y embeber los documentos de la base. | POST /kb/{id}/indexar | TST-083 |
 
 ## MOD-080 · Auditoría  _(backend)_
 Registrar acciones sensibles (alcance, escalados, confirmaciones, descargas, export).

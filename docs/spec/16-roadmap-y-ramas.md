@@ -76,6 +76,13 @@ dependencias rotas.
   previa en vivo; persiste en `ui.*`. Se hace al final, cuando el resto ya funciona.
 - **DoD:** aplicar un tema cambia toda la app y persiste, con contraste legible. TST-073.
 
+## Rama 9 — Base de Conocimiento / RAG local (MOD-120, doc 24) — v1.1
+- Embebido con `nomic-embed-text` + almacén de vectores en SQLite + búsqueda por coseno (backend); luego
+  la pantalla SCR-050 y el toggle del compositor (BTN-106/107); por último el importador del **paquete
+  semilla de Flipper Zero**. Mejora mucho el código específico (Flipper) sin cambiar de modelo.
+- **DoD:** indexar documentos, buscar por coseno, y que el chat con base activa inyecte contexto con
+  fuentes citadas. TST-083..085.
+
 ## Mejora futura (fuera de v1)
 - Tauri como shell (ADR-0002, alternativa ligera-nativa), llama.cpp directo para exprimir rendimiento,
   más modos, integración MCP más rica en Seguridad (siempre con los guardarraíles).

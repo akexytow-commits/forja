@@ -5,6 +5,7 @@ import json
 from typing import Any, AsyncIterator
 
 from . import audit, cloud_client, estimator
+from .conocimiento import BaseConocimiento, KBError, bloque_contexto, citadas
 from .cloud_client import ClienteNube, NubeError
 from .db import DB, ahora
 from .ollama_client import ModeloFaltante, OllamaCaido, OllamaClient, OllamaError
@@ -52,6 +53,7 @@ class MotorChat:
         self.nube = nube or ClienteNube()
         self.seguridad = Seguridad(db, ollama, self.nube)
         self.proyectos = Proyectos(db)
+        self.kb = BaseConocimiento(db, ollama)      # MOD-120 (doc 24)
         self._activas: set[int] = set()  # invariante ST-010: una generación por sesión
 
     def registro(self) -> dict[str, dict[str, Any]]:
@@ -107,7 +109,7 @@ class MotorChat:
 
     def _guardar(self, conv: dict[str, Any], texto: str, respuesta: str, plan, modelo: str | None,
                  thinking: str, tokens_in: int | None, tokens_out: int | None,
-                 gen_ms: int | None = None, thinking_ms: int | None = None) -> int:
+                 gen_ms: int | None = None, thinking_ms: int | None = None, fuentes: str | None = None) -> int:
         self.db.execute(
             "INSERT INTO messages(conversation_id, rol, contenido, tier, esfuerzo, created_at) "
             "VALUES (?, 'user', ?, ?, ?, ?)",
@@ -115,10 +117,10 @@ class MotorChat:
         )
         mid = self.db.execute(
             "INSERT INTO messages(conversation_id, rol, contenido, tier, esfuerzo, modelo, thinking, "
-            "tokens_in, tokens_out, gen_ms, thinking_ms, created_at) "
-            "VALUES (?, 'assistant', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "tokens_in, tokens_out, gen_ms, thinking_ms, fuentes, created_at) "
+            "VALUES (?, 'assistant', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (conv["id"], respuesta, plan.tier, plan.esfuerzo, modelo or plan.alias,
-             thinking or None, tokens_in, tokens_out, gen_ms, thinking_ms, ahora()),
+             thinking or None, tokens_in, tokens_out, gen_ms, thinking_ms, fuentes, ahora()),
         )
         titulo = conv["titulo"] or (texto.strip().splitlines()[0][:60] if texto.strip() else "Sin título")
         self.db.execute(
@@ -270,7 +272,8 @@ class MotorChat:
 
     # --- generación ----------------------------------------------------------
     async def generar(self, sesion_id: int | None, modo: str, tier: str, esfuerzo: str,
-                      texto: str, forzar: bool = False, engagement_id: int | None = None) -> AsyncIterator[str]:
+                      texto: str, forzar: bool = False, engagement_id: int | None = None,
+                      kb_id: int | None = None) -> AsyncIterator[str]:
         texto = (texto or "").strip()
         engagement = None
         if modo == "seguridad":
@@ -323,6 +326,8 @@ class MotorChat:
         thinking = ""
         terminado = False
         tel: Telemetria | None = None
+        rag: dict[str, Any] | None = None       # doc 24: base de conocimiento activa (BTN-106)
+        fragmentos: list[dict[str, Any]] = []
         try:
             historial = self._historial(conv["id"])
             cargados: list[str] = []
@@ -333,7 +338,21 @@ class MotorChat:
                     yield error("OLLAMA_CAIDO", "Ollama no responde en localhost:11434.")
                     return
 
-            entrada = tokens_aprox(texto) + sum(tokens_aprox(m["content"]) for m in historial)
+            if kb_id is not None:
+                # API-073 interno: se embebe la pregunta y se recuperan los top-k fragmentos por coseno.
+                try:
+                    rag = await self.kb.buscar(kb_id, texto)
+                except KBError as e:
+                    yield error(e.codigo, e.mensaje)
+                    return
+                except ModeloFaltante as e:
+                    yield error("MODELO_FALTANTE", f"Falta el modelo de embeddings {e.etiqueta} "
+                                f"(ollama pull {e.etiqueta}).", etiqueta=e.etiqueta, alias="embeddings")
+                    return
+                fragmentos = rag["fragmentos"]
+            texto_modelo = bloque_contexto(rag["nombre"], fragmentos, texto) if fragmentos else texto
+
+            entrada = tokens_aprox(texto_modelo) + sum(tokens_aprox(m["content"]) for m in historial)
             plan = resolver(modo, tier, esfuerzo, entrada + 400, self.registro(), cargados)
             if engagement is not None:
                 contexto = self.seguridad.contexto_prompt(engagement)
@@ -341,12 +360,22 @@ class MotorChat:
             ctx_proyecto = self.proyectos.contexto_prompt(conv.get("project_id"))
             if ctx_proyecto:
                 plan = replace(plan, system_prompt=f"{plan.system_prompt}\n\n{ctx_proyecto}")
-            presupuesto = (plan.params["num_ctx"] - plan.params["num_predict"]
-                           - tokens_aprox(plan.system_prompt) - tokens_aprox(texto) - 256)
+            libre = (plan.params["num_ctx"] - plan.params["num_predict"]
+                     - tokens_aprox(plan.system_prompt) - tokens_aprox(texto) - 256)
             if es_nube:
-                presupuesto = plan.params["num_ctx"] - tokens_aprox(plan.system_prompt) - tokens_aprox(texto)
+                libre = plan.params["num_ctx"] - tokens_aprox(plan.system_prompt) - tokens_aprox(texto)
+            if fragmentos:
+                # Los fragmentos no pueden comerse el contexto: como mucho ~60 % de lo libre (el resto, historial).
+                while len(fragmentos) > 1 and tokens_aprox(texto_modelo) - tokens_aprox(texto) > libre * 0.6:
+                    fragmentos = fragmentos[:-1]
+                    texto_modelo = bloque_contexto(rag["nombre"], fragmentos, texto)
+                yield sse("fuentes", {"kb_id": kb_id, "nombre": rag["nombre"], "fragmentos": fragmentos})
+            elif rag is not None:
+                yield sse("fuentes", {"kb_id": kb_id, "nombre": rag["nombre"], "fragmentos": [],
+                                      "aviso": "La base no tiene fragmentos indexados: respondo sin ella."})
+            presupuesto = libre - (tokens_aprox(texto_modelo) - tokens_aprox(texto))
             historial = self._recortar(historial, max(presupuesto, 0))
-            mensajes = [*historial, {"role": "user", "content": texto}]
+            mensajes = [*historial, {"role": "user", "content": texto_modelo}]
 
             tokens_in = tokens_out = None
             tps = None
@@ -357,6 +386,7 @@ class MotorChat:
                     "sesion_id": conv["id"], "modelo": modelo_real, "esfuerzo": esfuerzo,
                     "mensajes": len(mensajes), "tokens_aprox": entrada, "extracto": texto[:200],
                     "backend": cloud_client.backend_nube(self.db),
+                    "kb": rag["nombre"] if fragmentos else None, "fragmentos_kb": len(fragmentos),
                 })
                 yield sse("inicio", {
                     "sesion_id": conv["id"], "modelo": modelo_real, "alias": plan.alias, "tier": tier,
@@ -439,13 +469,15 @@ class MotorChat:
             gen_ms, thinking_ms = (tel.elapsed_ms(), tel.thinking_ms()) if tel else (None, None)
             if tokens_out is None and tel:
                 tokens_out = tel.tokens_out
+            fuentes = BaseConocimiento.fuentes_json(rag["nombre"], kb_id, fragmentos, contenido) if fragmentos else None
             mid = self._guardar(conv, texto, contenido, plan, modelo_real, thinking, tokens_in, tokens_out,
-                                gen_ms, thinking_ms)
+                                gen_ms, thinking_ms, fuentes)
             terminado = True
             yield sse("fin", {
                 "sesion_id": conv["id"], "mensaje_id": mid, "tokens_in": tokens_in,
                 "tokens_out": tokens_out, "tokens_por_segundo": tps, "titulo": conv["titulo"],
                 "modelo": modelo_real, "gen_ms": gen_ms, "thinking_ms": thinking_ms,
+                "fuentes_citadas": citadas(contenido, len(fragmentos)) if fragmentos else None,
             })
         except ModeloFaltante as e:
             yield error("MODELO_FALTANTE", f"El modelo {e.etiqueta} no está descargado.",
@@ -463,5 +495,7 @@ class MotorChat:
             if not terminado and plan is not None and (contenido or thinking):
                 self._guardar(conv, texto, contenido + MARCA_INTERRUMPIDA, plan, modelo_real, thinking, None,
                               tel.tokens_out if tel else None, tel.elapsed_ms() if tel else None,
-                              tel.thinking_ms() if tel else None)
+                              tel.thinking_ms() if tel else None,
+                              BaseConocimiento.fuentes_json(rag["nombre"], kb_id, fragmentos, contenido)
+                              if fragmentos else None)
             self._activas.discard(conv["id"])

@@ -1,7 +1,9 @@
 """Fixtures: un Ollama falso (httpx.MockTransport) y la app con una BBDD temporal."""
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 
 import httpx
 import keyring
@@ -16,12 +18,28 @@ TOKEN = "token-de-prueba"
 # Registro por defecto (doc 04 rev. 10): pequeno-general = instruct, pequeno-razonador = thinking-2507.
 INSTRUCT = "qwen3:4b-instruct-2507-q4_K_M"
 RAZONADOR = "qwen3:4b-thinking-2507-q4_K_M"
+EMBED = "nomic-embed-text:latest"
+DIM_EMBED = 768
+
+
+def vector_falso(texto: str) -> list[float]:
+    """Embedding determinista de bolsa de palabras (sin el prefijo de nomic): el coseno sí mide parecido."""
+    for pref in ("search_document: ", "search_query: "):
+        if texto.startswith(pref):
+            texto = texto[len(pref):]
+    v = [0.0] * DIM_EMBED
+    for w in re.findall(r"\w+", texto.lower()):
+        if len(w) > 2:
+            v[int(hashlib.md5(w.encode()).hexdigest(), 16) % DIM_EMBED] += 1.0
+    v[0] += 0.01   # nunca el vector cero
+    return v
 
 
 class FakeOllama:
     def __init__(self):
         self.up = True
-        self.instalados = {"qwen2.5-coder:3b", INSTRUCT, RAZONADOR}
+        self.instalados = {"qwen2.5-coder:3b", INSTRUCT, RAZONADOR, EMBED}
+        self.embeds: list[dict] = []    # peticiones a /api/embed (doc 24)
         self.cargados: list[str] = []
         self.descargados_de_ram: list[str] = []
         self.chats: list[dict] = []
@@ -87,6 +105,14 @@ class FakeOllama:
             trozos.append({"message": {"role": "assistant", "content": ""}, "done": True,
                            "prompt_eval_count": 42, "eval_count": 17, "eval_duration": 2_000_000_000})
             return self._ndjson(trozos)
+        if p == "/api/embed":
+            self.embeds.append(body)
+            if body["model"] not in self.instalados:
+                return httpx.Response(404, json={"error": f"model '{body['model']}' not found"})
+            if body["model"] not in self.cargados:
+                self.cargados.append(body["model"])
+            return httpx.Response(200, json={"model": body["model"],
+                                             "embeddings": [vector_falso(t) for t in body["input"]]})
         if p == "/api/pull":
             modelo = body["model"]
             self.instalados.add(modelo)

@@ -65,6 +65,12 @@ añade.
   ocurre al comprobar; usa análisis estático. (FR-080, seguridad)
 - **TST-082** "Corregir con la IA" devuelve una versión nueva del bloque a partir del código + errores. (FR-081)
 
+## Base de Conocimiento / RAG (MOD-120, doc 24)
+- **TST-083** Indexar un documento crea fragmentos con su embedding en `kb_chunks`. (FR-083)
+- **TST-084** Buscar devuelve los fragmentos más relevantes por coseno, con su origen. (FR-084)
+- **TST-085** Con una base activa, el chat inyecta los fragmentos en el contexto y muestra las fuentes
+  citadas. (FR-084)
+
 ## Telemetría de generación (MOD-013, doc 22)
 - **TST-077** La telemetría se actualiza en vivo durante la generación (tiempo, tokens, tok/s). (FR-077)
 - **TST-078** La ETA aparece, se afina con la velocidad real y nunca es negativa; muestra "estimando…"

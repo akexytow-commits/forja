@@ -135,7 +135,45 @@ Dentro del engagement tienes cuatro pestañas:
 
 ---
 
-## 4. La Nube (tu suscripción de Claude)
+## 4. Bases de conocimiento (RAG): que el modelo lea tus docs
+
+Un modelo de 3–4B **con la documentación correcta delante** escribe mucho mejor código específico (Flipper Zero,
+tu proyecto…) que sin ella, sin cambiar de modelo. Medido en este portátil, misma pregunta («escribe el
+`application.fam` de una app externa») con `qwen2.5-coder:3b`:
+- **sin base**: se inventa un YAML con un `entry_point: hola_flipper.py`. Inservible.
+- **con la base de Flipper**: el `App(appid=…, apptype=FlipperAppType.EXTERNAL, entry_point=…, fap_category=…)`
+  correcto, en 28 s, citando la fuente.
+
+**Montarla (una vez)**
+1. Icono de **libro** (arriba a la derecha) → **Bases de conocimiento**. Escribe un nombre («Flipper Zero») →
+   **Nueva base**.
+2. **Añadir documento**, en una de sus pestañas:
+   - **Pegar texto**: documentación, notas o código de referencia.
+   - **Archivos**: `.md`, `.txt` o `.pdf` (hasta 5 MB cada uno).
+   - **Carpeta**: todos los `.md/.txt/.pdf` de una carpeta y sus subcarpetas.
+   - **Paquete Flipper Zero**: la carpeta de una copia del firmware (la oficial con
+     `git clone https://github.com/flipperdevices/flipperzero-firmware`, o tu Momentum en
+     `%USERPROFILE%\flipper-project\repo`). Importa `documentation/` (FAM, FAP, fbt/uFBT, JS SDK, BadUSB,
+     formatos) y los ejemplos de `applications/examples/`.
+3. **Añadir e indexar** trocea y embebe con `nomic-embed-text` (todo en local). La barra muestra el progreso.
+   **Va lento en CPU**: ~1,4 s por fragmento. El paquete de Flipper (142 archivos, 366 fragmentos) tardó
+   **~9 min**, pero es solo la primera vez. Después solo se indexa lo nuevo.
+4. **Probar búsqueda** te enseña qué fragmentos recupera para una pregunta. Úsalo para comprobar que la base
+   tiene lo que esperas.
+
+**Usarla en el chat**
+- Abajo, junto a Modelo y Esfuerzo, el botón **Base: Usar base: Flipper Zero** la activa o desactiva para
+  tus mensajes, y la flecha ▾ elige otra o ninguna. Funciona en Scripts y en el chat de Seguridad.
+- Con la base activa, cada mensaje recupera los 4 fragmentos más parecidos y se los pasa al modelo. Bajo la
+  respuesta, **Ver fuentes citadas** muestra cuáles usó (las citadas, marcadas) y su texto.
+- **Reindexar** rehace todos los vectores (por ejemplo, si cambias de modelo de embeddings).
+- Basura dentro, basura fuera: mete los docs **oficiales** y buenos ejemplos.
+- Si falta el modelo de embeddings, la app lo dice; se descarga con `ollama pull nomic-embed-text` o desde
+  Estado del sistema.
+
+---
+
+## 5. La Nube (tu suscripción de Claude)
 
 - Es **opcional** y está **apagada** hasta que la actives: **Ajustes (engranaje) → Nube → Cómo conectar:
   Claude Code (tu suscripción)** → **Activar el tier Nube**. Necesitas Claude Code instalado y con sesión
@@ -149,7 +187,7 @@ Dentro del engagement tienes cuatro pestañas:
 
 ---
 
-## 5. El verificador de código: fíate de «Comprobar»
+## 6. El verificador de código: fíate de «Comprobar»
 
 - **Comprobar** pasa el bloque por la herramienta **real** del lenguaje: Python (compilador), PowerShell (su
   parser), Bash (`bash -n` con Git-Bash) y JavaScript (`node --check`). Muestra cada error con su **línea**.
@@ -163,12 +201,12 @@ Dentro del engagement tienes cuatro pestañas:
 
 ---
 
-## 6. Tus datos y el mantenimiento
+## 7. Tus datos y el mantenimiento
 
 ### Dónde vive cada cosa
 | Qué | Dónde |
 |---|---|
-| Base de datos (conversaciones, tareas, engagements, ajustes) | `%APPDATA%\FORJA\forja.db` (+ copias `forja.db.bak-*` antes de cada actualización) |
+| Base de datos (conversaciones, tareas, engagements, ajustes, bases de conocimiento y sus vectores) | `%APPDATA%\FORJA\forja.db` (+ copias `forja.db.bak-*` antes de cada actualización) |
 | Registro (por si algo falla) | `%APPDATA%\FORJA\logs\forja.log` |
 | Tus plantillas y tus imágenes de fondo | `%APPDATA%\FORJA\plantillas` · `%APPDATA%\FORJA\fondos` |
 | Proyectos | `Documentos\FORJA proyectos\…` (o la carpeta que elijas) |

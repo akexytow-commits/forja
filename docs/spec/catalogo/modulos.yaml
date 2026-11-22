@@ -118,6 +118,14 @@ modulos:
     pantallas: [SCR-040]
     requisitos: [FR-073]
 
+  - id: MOD-120
+    nombre: Base de Conocimiento (RAG)
+    capa: backend+ui
+    responsabilidad: "RAG local (doc 24): bases de conocimiento, indexado con nomic-embed-text, vectores en SQLite, recuperación top-k por coseno e inyección en el contexto del chat con fuentes citadas. Semilla Flipper Zero."
+    depende_de: [MOD-011, MOD-013, MOD-060]
+    pantallas: [SCR-050]
+    requisitos: [FR-082, FR-083, FR-084, FR-085]
+
   - id: MOD-080
     nombre: Auditoría
     capa: backend

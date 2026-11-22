@@ -20,7 +20,8 @@ def test_bbdd_creada_con_todas_las_tablas(client):
     assert {"settings", "conversations", "messages", "projects", "task_lists", "tasks", "engagements",
             "findings", "models", "audit_log", "schema_version"} <= tablas
     assert {"learning_paths", "learning_modules", "learning_sections", "learning_progress", "tool_catalog"} <= tablas
-    assert db.schema_version() == 12
+    assert {"knowledge_bases", "kb_documents", "kb_chunks"} <= tablas      # DB-012 (Rama 9)
+    assert db.schema_version() == 13
     assert db.get_setting("ui.tema") == "claro"      # respuesta G2 del Protocolo (migración 010)
 
 

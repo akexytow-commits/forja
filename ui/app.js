@@ -489,6 +489,7 @@
     $("#compositor").classList.toggle("bloqueado", !chat);
     $("#compositor").hidden = st.modo === "tareas" || (st.modo === "seguridad" && !esChat());
     if (!esChat()) $("#banner-justo").hidden = true;
+    window.ForjaKB?.pintarChip();                       // BTN-106 solo en los modos de chat
     actualizarBotonEnviar();
   }
 
@@ -662,6 +663,7 @@
         ? `<button class="boton-txt" type="button" data-accion="s008">${esc(t("chat.ver_estado"))}</button>` : "";
       pie.innerHTML += `<div class="aviso"><span>${esc(s.error.mensaje || t("error.generico"))}</span>${accion}</div>`;
     }
+    window.ForjaKB?.pintarFuentes(pie, s);              // BTN-107 Ver fuentes citadas (doc 24)
   }
 
   function pintarMensajes(mensajes) {
@@ -678,7 +680,9 @@
         ponerCabecera(el, m.modelo, m.tier, m.esfuerzo);
         ponerMetricas(el, m.tokens_out, null, m.gen_ms, m.thinking_ms);
         cont.append(el);
-        renderIA(el, { contenido, thinking: m.thinking || "", streaming: false, interrumpida });
+        let fuentes = null;
+        try { fuentes = m.fuentes ? JSON.parse(m.fuentes) : null; } catch { fuentes = null; }
+        renderIA(el, { contenido, thinking: m.thinking || "", streaming: false, interrumpida, fuentes });
       }
     }
     cont.scrollTop = cont.scrollHeight;
@@ -736,7 +740,8 @@
       const engagement_id = st.modo === "seguridad" ? SEG()?.engagementId() : null;
       const cuerpoPeticion = opts.ruta
         ? { sesion_id: st.hilo[clave()] ?? null, tier, esfuerzo: st.esfuerzo, ...opts.cuerpo }
-        : { sesion_id: st.hilo[clave()] ?? null, modo: st.modo, tier, esfuerzo: st.esfuerzo, texto, forzar, engagement_id };
+        : { sesion_id: st.hilo[clave()] ?? null, modo: st.modo, tier, esfuerzo: st.esfuerzo, texto, forzar, engagement_id,
+            kb_id: window.ForjaKB?.activaId() ?? null };
       await sse(ruta, cuerpoPeticion, (ev, d) => {
         if (ev === "sugerencia_escalado") {
           sugerencia = d;
@@ -753,6 +758,8 @@
           ponerCabecera(el, d.modelo, d.tier, d.esfuerzo);
           if (d.requiere_carga) linea(`<span class="chispa"></span>${esc(t("estado.cambiando_modelo"))} <span>${esc(d.modelo)}</span>`);
           if (st.salud && d.tier !== "nube") st.salud.modelo_cargado = d.modelo;
+        } else if (ev === "fuentes") {
+          s.fuentes = { ...d, citadas: [] };             // doc 24: fragmentos que se le pasan al modelo
         } else if (ev === "tope_razonamiento") {
           s.tope = true;                                // doc 04: thinking cortado, llega la respuesta final
           if (st.salud && d.modelo_respuesta) st.salud.modelo_cargado = d.modelo_respuesta;
@@ -767,6 +774,7 @@
         } else if (ev === "fin") {
           s.streaming = false;
           ponerMetricas(el, d.tokens_out, d.tokens_por_segundo, d.gen_ms, d.thinking_ms);
+          if (s.fuentes) s.fuentes.citadas = d.fuentes_citadas || [];
           st.telFin = resumenGen(d.gen_ms, d.tokens_out, d.thinking_ms);
         } else if (ev === "error") {
           // G-3: el rechazo explica el límite y reconduce (TST-033).
@@ -1259,6 +1267,7 @@
       if (e.key === "." && (e.ctrlKey || e.metaKey)) { e.preventDefault(); alternarRazon(); return; }
       if (e.key !== "Escape") return;
       if (!$("#scr-008").hidden) cerrarS008();
+      if (!$("#scr-050").hidden) window.ForjaKB?.cerrar();
       if (!$("#scr-007").hidden) cerrarAjustes();
       if (!$("#scr-006").hidden) { $("#scr-006").hidden = true; st.pendiente = null; }
     });
@@ -1292,7 +1301,7 @@
 
   // Puente para módulos de modo (ui/tareas.js).
   window.ForjaApp = {
-    api, t, fmt, esc, st, etiquetaPara, refrescarSalud, actualizarLinea, ajustes: {},
+    api, sse, t, fmt, esc, st, etiquetaPara, esChat, refrescarSalud, actualizarLinea, ajustes: {},
     colocarChat, actualizarCompositor, pintarVacio, cargarHilos: alEntrarModoChat,
     // Rama 5 (ui/proyectos.js)
     clave, hiloActual, recargarHilos: cargarHilos, entrada, autoAltura, abrirAjustes, alternarRazon,

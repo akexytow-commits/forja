@@ -87,6 +87,13 @@ con confirmación por acción (API-002b). Si no hay integración configurada, el
 Devuelve las plantillas de informe disponibles (HackerOne, Bugcrowd, breve y la **propia del usuario**)
 para que Ajustes y el redactor de informes (SCR-022) las ofrezcan.
 
+## Base de Conocimiento (RAG, doc 24)
+### API-070 `GET/POST /kb` — listar/crear bases de conocimiento (DB-012).
+### API-071 `POST /kb/{id}/documentos` `{ origen, contenido | ruta }` — añadir documento.
+### API-072 `POST /kb/{id}/indexar` → trocea + embebe con `nomic-embed-text`; progreso por SSE.
+### API-073 `POST /kb/{id}/buscar` `{ query, k }` → `{ fragmentos: [{texto, origen, score}] }` (coseno).
+El chat, con una base activa, llama a buscar y antepone los fragmentos (con citas) al contexto del modelo.
+
 ## Ajustes / auditoría / export
 ### API-060 `GET/PUT /ajustes` (DB-001). Activar Nube: `PUT /ajustes` con `nube.activada=1` + guardar clave
 vía keyring (el backend nunca devuelve la clave en claro).

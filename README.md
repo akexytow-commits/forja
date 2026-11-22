@@ -1,6 +1,6 @@
 # FORJA — IA local de escritorio
 
-> **Roadmap v1 COMPLETADO (2026-11-22):** Ramas 0–8 (+ 6b) construidas, probadas con el modelo real y empaquetadas en `FORJA.exe`. Guía para usarla: [GUIA_DE_USO.md](GUIA_DE_USO.md).
+> **Roadmap v1 COMPLETADO (2026-11-22):** Ramas 0–8 (+ 6b) construidas, probadas con el modelo real y empaquetadas en `FORJA.exe`. **v1.1:** Rama 9 (Base de Conocimiento / RAG local). Guía para usarla: [GUIA_DE_USO.md](GUIA_DE_USO.md).
 
 Construida desde la especificación de `docs/spec/` (léela por el `README.md` de esa carpeta).
 
@@ -36,9 +36,10 @@ Si faltan, la propia app lo detecta y lo descarga desde la pantalla *Estado del 
 | 6 Personalización de interfaces | ✅ **Protocolo del doc 13 ejecutado**: las 17 preguntas PREGUNTAR (G1–G5, S1–S3, SC1–SC2, SG1–SG3, ST1–ST2, SE1, SA1), una clave `ui.*` por pregunta, con tus respuestas en la migración 010. Ajustes › **Interfaces**: una fila por pregunta, por pantalla; **se repinta al momento** (vista previa en vivo, Guardar persiste, Cerrar deshace) y se puede **re-pulir** cualquier pantalla sin tocar las demás. Todas las opciones de cada pregunta están implementadas: pestañas icono+texto/texto/icono · esfuerzo en segmentos o deslizador · modelo en tooltip o a la vista · proyectos desplegable o fijo a la izquierda · resaltado de código (nuevo, sin dependencias) acorde/siempre oscuro/alto contraste · gate a pantalla completa o **asistente por pasos** (Alcance → Reglas → Autorización) · hallazgos en tabla o tarjetas · plantilla de informe HackerOne/Bugcrowd/breve/**propia** (editable) · tareas en tablero o lista, con o sin minutos y carga · escalado modal+banner/siempre modal/siempre banner · Ajustes en pestañas o una página · tema claro/oscuro/**seguir el sistema** |
 | 6b Verificador de código | ✅ **Comprobar** (BTN-101) en cada bloque de Python, PowerShell, Bash o JavaScript de Scripts → `POST /scripts/verificar` (API-032): **solo análisis estático, nunca ejecuta el código** — Python con `compile()` (= py_compile) + ruff si está; PowerShell con su parser (AST) + PSScriptAnalyzer si está; Bash con `bash -n` (Git-Bash o WSL) + shellcheck si está; JS con `node --check`. Errores con línea y mensaje bajo el bloque; si falta la herramienta, aviso claro y oferta de instalarla con winget **tras confirmar** (auditado). Si hay errores, **Corregir con la IA** (BTN-102): código + errores al Motor de Chat en el mismo hilo; el bloque nuevo se puede volver a Comprobar |
 | 7 Empaquetado a .exe | ✅ `dist\FORJA.exe` (~25 MB) con PyInstaller `--onefile`: backend + pywebview + `ui/`, prompts, migraciones y plantillas como datos; **sin consola** e **icono** propio (el yunque de la UI, en tu violeta). `FORJA.exe --instalar` lo copia a `%LOCALAPPDATA%\Programs\FORJA` (sin admin) y crea los **accesos directos** del Escritorio y del menú Inicio. **Primer arranque limpio**: crea `%APPDATA%\FORJA\` y aplica las migraciones; secuencia **ST-060**: backend → Ollama (`/salud`) → shell, o **SCR-008** con la guía (arrancar Ollama / descargar el modelo) si falta Ollama o un modelo necesario. Ollama sigue siendo externo. Una sola instancia (un segundo doble clic avisa); los errores de arranque salen en un cuadro de diálogo con la ruta del registro |
+| 9 Base de Conocimiento (RAG local, v1.1) | ✅ **SCR-050** (icono de libro en la barra): crear bases (BTN-103), **añadir documentos** (BTN-104: pegar, subir `.md/.txt/.pdf`, importar una carpeta o el **paquete semilla de Flipper Zero** desde una copia local del firmware → `documentation/` + `applications/examples/`) que lanza el indexado, **Reindexar** (BTN-105), quitar documentos, borrar base y **probar búsqueda**. Indexado (API-072): troceo de ~512 tokens con solape de 64 (corta en párrafo/línea/frase), embeddings con **`nomic-embed-text`** vía `/api/embed` (`search_document:`, `num_ctx` 8192, lotes de 8), vector float32 de 768 dim **normalizado** en `kb_chunks.embedding` (BLOB); progreso por SSE. Búsqueda (API-073): `search_query:` + coseno con numpy (matriz en caché por base). **Chat**: con la base activa (**BTN-106** en el selector inferior: activar/desactivar y ▾ para elegir), el Motor recupera top-k (4, recortado si no cabe en el contexto), antepone los fragmentos numerados con su origen y pide citar; la respuesta guarda las fuentes (`messages.fuentes`) y **BTN-107 «Ver fuentes citadas»** las muestra (citadas primero) también tras recargar. El modelo de embeddings **convive en RAM** con el del chat. Verificado con Ollama real (ver desviaciones) |
 | 8 Estudio de Apariencia | ✅ **SCR-040** (icono de paleta en la barra, o Ajustes › Apariencia, que ahora es su acceso directo, BTN-063). **Presets** (BTN-095): FORJA oscuro, FORJA claro, Alto contraste y tres con personalidad: Fragua, Medianoche y Papel. **Color y acento** (BTN-096): tema base oscuro/claro/sistema/alto contraste, 6 acentos o cualquier color, y colores base propios (fondo, superficie, texto); el resto de tonos se derivan solos. **Contraste comprobado** (WCAG AA): informe en vivo con cada ratio, y «Aplicar» se bloquea si algo no se lee (el backend lo vuelve a validar). **Tipografía y densidad** (BTN-097): sistema, mono, serif, redondeada (Bahnschrift) o humanista (Verdana); cómoda/compacta. **Fondo** (BTN-098): liso, degradado suave o una imagen tuya con opacidad del 5 % al 45 %. **Acento por modo** (opcional) y **una sola animación** (los mensajes aparecen), desactivable. **Vista previa en vivo** (BTN-099): toda la app se repinta al momento, más una maqueta con los dos selectores y una conversación de ejemplo; «Aplicar» lo guarda en `ui.*` y «Cancelar» (o Esc) lo deshace |
 
-Pruebas cubiertas (219): TST-001…006, 010…012, 020…023, 030…039, 032b, 040…048, 060…063, 070…072, 075…079, 100…102 (+ token, validación, CRUD) TST-073 (`tests/test_estudio.py`: presets y acentos legibles, CSS = backend, combinaciones ilegibles rechazadas, persistencia tras reiniciar y, en Edge headless, vista previa en vivo, bloqueo por contraste y el tema aplicado tras reiniciar el servidor), empaquetado (`tests/test_empaquetado.py`: abre el `dist\FORJA.exe` real como un doble clic, con `%APPDATA%` vacío y sin Ollama → ventana «FORJA», BBDD migrada, SCR-008 y una sola instancia; se salta si no se ha construido), TST-080…082 (`tests/test_verificador.py`, contra las herramientas reales del equipo; las que falten se saltan) y Rama 6 (`tests/test_rama6.py`: las preferencias `ui.*` persisten tras reiniciar, se re-pulen sin perder nada y **se aplican**, comprobado en Edge headless contra un servidor reiniciado; se salta si no hay Edge).
+Pruebas cubiertas (237): TST-083…085 (`tests/test_conocimiento.py`: troceo, indexado con vectores 768 float32 normalizados, importar carpeta con PDF, subir archivo, semilla Flipper, sin modelo de embeddings, búsqueda por coseno con origen, chat que inyecta contexto y cita, Nube auditada, y en Edge headless SCR-050 + BTN-106/107 incluso tras recargar), TST-001…006, 010…012, 020…023, 030…039, 032b, 040…048, 060…063, 070…072, 075…079, 100…102 (+ token, validación, CRUD) TST-073 (`tests/test_estudio.py`: presets y acentos legibles, CSS = backend, combinaciones ilegibles rechazadas, persistencia tras reiniciar y, en Edge headless, vista previa en vivo, bloqueo por contraste y el tema aplicado tras reiniciar el servidor), empaquetado (`tests/test_empaquetado.py`: abre el `dist\FORJA.exe` real como un doble clic, con `%APPDATA%` vacío y sin Ollama → ventana «FORJA», BBDD migrada, SCR-008 y una sola instancia; se salta si no se ha construido), TST-080…082 (`tests/test_verificador.py`, contra las herramientas reales del equipo; las que falten se saltan) y Rama 6 (`tests/test_rama6.py`: las preferencias `ui.*` persisten tras reiniciar, se re-pulen sin perder nada y **se aplican**, comprobado en Edge headless contra un servidor reiniciado; se salta si no hay Edge).
 La UI de la Rama 5 se recorrió además en Edge headless (CDP) con un Ollama falso lento: plantillas, nuevo proyecto,
 telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobrescribir, export, ajustes y cambio de tema/acento, sin errores de consola.
 
@@ -71,6 +72,8 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
   (`~40 s`, `~2 min`). El evento lleva también `thinking_ms`; `messages` guarda `gen_ms` y `thinking_ms` (migración 008).
   En la Nube los tokens en vivo son aproximados (por caracteres).
 - **Apariencia** en Ajustes es la versión básica (presets cerrados); el estudio completo con contraste y fondos es la Rama 8.
+- **Spec rev (17)** (2026-11-22): doc 24 Base de Conocimiento (MOD-120, SCR-050, BTN-103…107, API-070…073,
+  DB-012, FR-082…085, TST-083…085, alias `embeddings` en doc 04). Copiada a `docs/spec`.
 - **Spec rev (16)**: copiada a `docs/spec` (doc 16: roadmap COMPLETADO). Rev. 15: doc 23, aviso sobre «Corregir con la IA». Rev. 14: doc 23 verificador, API-032, FR-080/081, TST-080…082, BTN-101/102, MOD-110). Antes, rev. 13 (doc 07: API-055). Doc 04 (rev. 12 recoge el prompt de medio implementado y los tiempos medidos): registro 2507, etiquetas reales, override de Seguridad, tope de razonamiento y mejora del prompt de medio. Doc 07: eventos `tope_razonamiento` y `reclasificar`. TST-032b.
 - **Doc 21 (Política de Restricciones) aplicado** a `backend/prompts/scripts.txt`, `seguridad.txt` y `tareas.txt`
   (2026-11-22): tono de experto autorizado, directo, sin moralinas ni descargos; en Seguridad, la lista de lo permitido
@@ -160,6 +163,44 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
   - «Corregir con la IA» con qwen2.5-coder:3b real: 42 s; el bloque corregido pasa el verificador, pero la explicación que lo acompañaba era incorrecta (hablaba de una «coma» y un «corchete»). Fíate de Comprobar, no del texto. Por eso (doc 23 rev. 15) el bloque corregido **se vuelve a comprobar solo** y lleva ese aviso debajo.
 
 - **Rama 7 (empaquetado)**: `--onefile` como pide el doc 15. El precio es que cada arranque descomprime el .exe en una carpeta temporal: tarda unos segundos más que `run.bat` en abrir la ventana. El .exe no está firmado: la primera vez Windows SmartScreen puede avisar («Más información» → «Ejecutar de todas formas»). El icono (`assets/forja.ico`) se genera con `tools/generar_icono.py` desde el yunque de la UI (Edge headless, sin Pillow). `FORJA_SIN_DIALOGOS=1` desactiva los cuadros de diálogo (lo usan las pruebas). El doc 15 lista `qwen3:4b` en «Preparación»; el registro real es el de la rev. 10 del doc 04 (instruct/thinking 2507), y la propia app ofrece descargarlos desde SCR-008.
+
+- **Rama 9 (Base de Conocimiento / RAG)**:
+  - **Alias `embeddings`** (migración 013) va en la tabla `models` con tier `pequeno`: el doc 04 dice «n/a»,
+    pero el CHECK de la tabla solo admite pequeno/grande/nube. No es un modelo de chat: `asegurar_unico` no
+    descarga los modelos de embeddings (doc 24 §Flujo 4) y `/salud` no lo toma por «el modelo cargado».
+  - **DB-012**: `kb_documents` guarda además el **texto extraído** (`contenido`), para que Reindexar no tenga que
+    volver a leer los archivos; `indexado_at` NULL = pendiente. `knowledge_bases.embed_modelo` recuerda con qué
+    modelo se indexó: si cambias el del registro, el siguiente indexado lo rehace todo (vectores de modelos
+    distintos no se comparan). `messages.fuentes` (JSON) guarda los fragmentos dados al modelo y cuáles citó.
+  - **Endpoints extra** (no en el doc 07): `GET /kb/{id}` (base + `lista` de documentos), `DELETE /kb/{id}`,
+    `DELETE /kb/{id}/documentos/{doc}`. API-071 acepta tres formas: `contenido` (pegar), `nombre` +
+    `contenido_b64` (subir un archivo desde la ventana) o `ruta` (archivo o carpeta del equipo; con
+    `semilla: true`, el paquete Flipper). Reimportar el mismo archivo lo **actualiza** (no duplica). API-072
+    acepta `{todo}`: sin él, solo los pendientes (lo que hace BTN-104); con él, Reindexar (BTN-105).
+  - **Paquete semilla de Flipper (FR-085)**: FORJA no trae los docs ni los descarga (el doc 24: «tú importas
+    los oficiales»). Se importan desde una **copia local del firmware**: `ReadMe.md`, `documentation/` y
+    `applications/examples/`. Además de `.md/.txt/.pdf` entran `.c/.h/.fam/.js/.ts` (los ejemplos son
+    código), envueltos en un bloque de código con su ruta. Se saltan `images/`, `doxygen/`, `.git`, `build`…
+  - **Citas**: los modelos de 3–4B no citaban `[n]` solo con pedirlo al principio. El bloque pide además, **tras
+    la pregunta**, una última línea «Fuentes: [n]». Con eso `qwen2.5-coder:3b` cita. Si aun así no cita
+    nada, BTN-107 dice «Ver fuentes consultadas (n) — no citó ninguna» y las muestra igualmente.
+  - **Cuántos fragmentos**: k = 4, y se quitan los últimos si pasan del 60 % del contexto libre. En la Nube
+    los fragmentos salen del equipo junto con el mensaje; el registro de auditoría `escalado_nube` anota la
+    base y cuántos fragmentos.
+  - **Verificado con Ollama 0.40.16 real** (2026-11-22, CPU, 7,3 GB):
+    - **Descarga.** En esta red, `ollama pull nomic-embed-text` falla: la descarga del blob, en
+      `*.r2.cloudflarestorage.com`, da timeout aunque el registro responde. Se instaló el **mismo modelo** desde
+      el repo oficial de Nomic en Hugging Face (`nomic-embed-text-v1.5.f16.gguf`, 274 MB) con
+      `ollama create nomic-embed-text` (Modelfile: `FROM …gguf` + `num_ctx 8192`). Así se conserva el nombre
+      del registro.
+    - **Indexado.** Paquete semilla desde el Momentum local: 142 archivos → 366 fragmentos en **529 s**
+      (~1,4 s/fragmento).
+    - **Búsqueda.** ~0,6 s. El documento correcto sale primero para «FAP con ufbt» (AppsOnSDCard/fbt), «BadUSB
+      STRING DELAY» (BadUsbScriptFormat), «GPIO desde JavaScript» (js_gpio) y «app externa en application.fam»
+      (manifiestos de ejemplo). Para «dibujar texto con canvas», `example_thermo.c` (`canvas_draw_str`) solo
+      queda 4.º.
+    - **Chat** con `qwen2.5-coder:3b`: con la base, `application.fam` correcto y «Fuentes: [1]» en 28 s; sin
+      ella, un YAML inventado. En RAM quedan a la vez el modelo de chat (2,4 GB) y nomic (0,39 GB).
 
 - **Rama 8 (Estudio de Apariencia)**:
   - **Fuente única de los colores:** `backend/apariencia.py` guarda paletas, presets, derivación de tonos y contraste. La UI le pide la paleta resultante (`POST /apariencia/previa`) en vez de calcularla, y `PUT /ajustes` rechaza con `CONTRASTE_INSUFICIENTE` cualquier combinación ilegible (con «seguir el sistema» comprueba las dos variantes).
