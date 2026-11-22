@@ -27,11 +27,27 @@ FAMILIA: dict[tuple[str, str], str] = {
     ("tareas", "nube"): "nube-frontera",
 }
 
-# Paso 2a — modelos CON thinking nativo (Qwen3)
+# Paso 2a — modelos CON thinking nativo (Qwen3). En CPU, num_predict presupuesta pensamiento + respuesta
+# juntos: con menos, qwen3 agota el presupuesto razonando y no llega a responder (doc 04, rev. 8).
+# Con thinking apagado, el cliente de Ollama añade además /no_think y nunca baja de NUM_PREDICT_MIN_NO_THINK.
 PARAMS_THINKING: dict[str, dict[str, Any]] = {
-    "bajo": {"enable_thinking": False, "reasoning_effort": None, "temperatura": 0.3, "num_predict": 512},
-    "medio": {"enable_thinking": True, "reasoning_effort": "medium", "temperatura": 0.5, "num_predict": 1024},
-    "extra": {"enable_thinking": True, "reasoning_effort": "high", "temperatura": 0.7, "num_predict": 2048},
+    "bajo": {"enable_thinking": False, "reasoning_effort": None, "temperatura": 0.3, "num_predict": 768},
+    "medio": {"enable_thinking": True, "reasoning_effort": "medium", "temperatura": 0.5, "num_predict": 2048},
+    "extra": {"enable_thinking": True, "reasoning_effort": "high", "temperatura": 0.7, "num_predict": 3072},
+}
+NUM_PREDICT_MIN_NO_THINK = 768
+
+# Override de Seguridad por esfuerzo (doc 04 rev. 10). Las variantes Qwen3 4B 2507 no son híbridas: para
+# "sin razonar" no vale un flag, se usa OTRO modelo.
+# - bajo  → modelo de CÓDIGO (sin thinking), 768: comandos/snippets directos (ffuf, nmap…).
+# - medio → pequeno-general = qwen3 INSTRUCT-2507 (sin razonamiento), 1536: análisis directo en ~1–2 min.
+#           (En grande, qwen3:8b sí es híbrido: thinking apagado + /no_think.)
+# - extra → pequeno-razonador = qwen3 THINKING-2507, 3072 (tabla base) + tope de razonamiento en el Motor de
+#           Chat; si el tope salta, la respuesta forzada la da el instruct (PlanDeModelo.etiqueta_respuesta).
+OVERRIDE_ESFUERZO: dict[tuple[str, str], dict[str, Any]] = {
+    ("seguridad", "bajo"): {"familia": {"pequeno": "pequeno-codigo", "grande": "grande-codigo"}, "num_predict": 768},
+    ("seguridad", "medio"): {"thinking": False, "num_predict": 1536},
+    ("seguridad", "extra"): {"familia": {"pequeno": "pequeno-razonador"}},
 }
 
 # Paso 2b — modelos SIN thinking: el esfuerzo se emula con prompt + parámetros
@@ -87,6 +103,9 @@ class PlanDeModelo:
     params: dict[str, Any] = field(default_factory=dict)
     herramientas: list[str] = field(default_factory=list)
     requiere_carga: bool = False
+    # Modelo SIN thinking que da la respuesta forzada si salta el tope de razonamiento (doc 04). None → el
+    # mismo modelo con thinking apagado (sirve si es híbrido, como qwen3:8b).
+    etiqueta_respuesta: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -113,6 +132,26 @@ def cargar_prompt(modo: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def alias_para(modo: str, tier: str, esfuerzo: str, registro: dict[str, dict[str, Any]] | None = None) -> str:
+    """Alias del registro que usa (modo, tier, esfuerzo), con el override por esfuerzo aplicado.
+    Si el alias del override no está en el registro dado (BBDD antigua), se queda la familia base."""
+    base = FAMILIA[(modo, tier)]
+    override = OVERRIDE_ESFUERZO.get((modo, esfuerzo)) if tier != "nube" else None
+    if override and "familia" in override:
+        alias = override["familia"].get(tier, base)
+        if registro is None or alias in registro:
+            return alias
+    return base
+
+
+def etiqueta_respuesta(alias: str, tier: str, registro: dict[str, dict[str, Any]]) -> str | None:
+    """Para un modelo thinking, el modelo general SIN thinking de su tier (el instruct), si es otro."""
+    fila = registro.get(f"{tier}-general")
+    if not fila or fila.get("thinking") or not fila.get("etiqueta") or alias == f"{tier}-general":
+        return None
+    return fila["etiqueta"]
+
+
 def resolver(
     modo: str,
     tier: str,
@@ -128,7 +167,8 @@ def resolver(
     if esfuerzo not in ESFUERZOS:
         raise RouterError(f"Esfuerzo desconocido: {esfuerzo}")
 
-    alias = FAMILIA[(modo, tier)]
+    alias = alias_para(modo, tier, esfuerzo, registro)
+    override = OVERRIDE_ESFUERZO.get((modo, esfuerzo)) if tier != "nube" else None
     fila = (registro or {}).get(alias)
     if fila is None:
         raise RouterError(f"El alias '{alias}' no está en el registro de modelos.")
@@ -150,6 +190,11 @@ def resolver(
         "num_predict": base.pop("num_predict"),
         **base,
     }
+    if override and "num_predict" in override:
+        params["num_predict"] = override["num_predict"]
+    if override and override.get("thinking") is False and "enable_thinking" in params:
+        params["enable_thinking"] = False        # el cliente de Ollama añade /no_think (qwen3 híbrido)
+        params["reasoning_effort"] = None
     params["num_ctx"] = num_ctx_para(tier, longitud_entrada_tokens, params["num_predict"])
 
     es_nube = tier == "nube"
@@ -177,4 +222,5 @@ def resolver(
         params=params,
         herramientas=list(HERRAMIENTAS[modo]),
         requiere_carga=(not es_nube) and (etiqueta not in cargados),
+        etiqueta_respuesta=etiqueta_respuesta(alias, tier, registro or {}) if thinking and not es_nube else None,
     )

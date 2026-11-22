@@ -27,6 +27,9 @@ añade.
 - **TST-030** Entrar en Seguridad sin autorización confirmada deja el modo **bloqueado**. (FR-030, ST-030)
 - **TST-031** `analizar` sobre recon pegado crea `findings` en estado `idea` con "dónde enfocar". (FR-031)
 - **TST-032** La IA no ejecuta acciones activas; cualquier integración externa exige confirmación. (FR-032, G-2)
+- **TST-032b** En Seguridad: bajo da comando directo (coder); medio responde sin thinking; extra razona pero
+  el **tope de razonamiento** dispara si el thinking llega al ~60% del presupuesto y **siempre produce
+  respuesta** (doc 04 §Tope de razonamiento).
 - **TST-033** Una petición que cruza la lista "nunca" (G-3) es rechazada con explicación y reconducción.
 - **TST-034** El redactor une dos enfoques/evidencias en un informe exportable. (FR-033)
 - **TST-035** Cambiar el alcance re-exige confirmación y queda auditado. (ST-030, FR-063)

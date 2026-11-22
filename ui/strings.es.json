@@ -526,5 +526,6 @@
   "s007.lab.vbox": "VirtualBox (pesado)",
   "s007.lab.distro": "Distro de WSL",
   "s007.lab.url": "URL del attack box",
-  "s007.familia.nota": "Scripts usa los modelos de código; Seguridad y Tareas, los generales."
+  "s007.familia.nota": "Scripts usa los modelos de código; Seguridad y Tareas, los generales.",
+  "chat.razon_tope": "Razonamiento (recortado por el tope: la respuesta se generó con lo ya pensado)"
 }

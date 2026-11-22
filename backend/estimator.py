@@ -12,7 +12,11 @@ import re
 import unicodedata
 from typing import Any
 
-from .router import CONTEXTO, PARAMS_THINKING
+from .router import CONTEXTO
+
+# Base de la "salida máxima razonable en local" (× umbral.factor_salida). Se queda en 2048 aunque el router
+# suba num_predict (doc 04 rev. 8): ese aumento es presupuesto para el thinking, no más respuesta útil.
+SALIDA_LOCAL_BASE = 2048
 
 CABE_LOCAL, JUSTO, RECOMENDADO_NUBE = "CABE_LOCAL", "JUSTO", "RECOMENDADO_NUBE"
 
@@ -79,7 +83,7 @@ def estimar(modo: str, tier: str, esfuerzo: str, texto: str, contexto: list[str]
     salida = salida_prevista(t)
     comp = complejidad(t, texto)
     tope = CONTEXTO.get(tier, (0, None))[1]
-    limite_salida = PARAMS_THINKING["extra"]["num_predict"] * u["factor_salida"]
+    limite_salida = SALIDA_LOCAL_BASE * u["factor_salida"]
 
     if tope and tokens_entrada > tope:
         veredicto, codigo = RECOMENDADO_NUBE, "contexto"

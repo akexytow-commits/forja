@@ -20,7 +20,7 @@ def test_bbdd_creada_con_todas_las_tablas(client):
     assert {"settings", "conversations", "messages", "projects", "task_lists", "tasks", "engagements",
             "findings", "models", "audit_log", "schema_version"} <= tablas
     assert {"learning_paths", "learning_modules", "learning_sections", "learning_progress", "tool_catalog"} <= tablas
-    assert db.schema_version() == 8
+    assert db.schema_version() == 9
     assert db.get_setting("ui.tema") == "oscuro"
 
 
@@ -123,7 +123,7 @@ def test_historial_se_envia_en_el_mismo_hilo(client, fake):
 
 def test_thinking_se_emite_y_guarda(client, fake):
     # Forzamos un modelo con thinking en Scripts para probar el canal de razonamiento.
-    client.app.state.db.execute("UPDATE models SET etiqueta='qwen3:4b', thinking=1 WHERE alias='pequeno-codigo'")
+    client.app.state.db.execute("UPDATE models SET etiqueta='qwen3:4b-thinking-2507-q4_K_M', thinking=1 WHERE alias='pequeno-codigo'")
     evs = chat(client, esfuerzo="extra")
     assert fake.chats[-1]["think"] is True
     assert "".join(d["texto_parcial"] for e, d in evs if e == "thinking") == "".join(fake.pensamiento)

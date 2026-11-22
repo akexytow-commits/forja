@@ -17,6 +17,17 @@ from dataclasses import replace
 MODOS_DISPONIBLES = {"scripts", "seguridad"}  # Tareas tiene vista propia (Rama 3). Seguridad, tras el gate (ST-030).
 MARCA_INTERRUMPIDA = "\n\n_[respuesta interrumpida]_"
 
+# Doc 04 §Tope de razonamiento: si el thinking llega a este % de num_predict sin que empiece la respuesta,
+# se corta y se pide la respuesta final (con lo ya pensado + /no_think) con el presupuesto restante.
+TOPE_RAZONAMIENTO = 0.6
+MAX_RAZONAMIENTO_CHARS = 12_000   # lo pensado que se reenvía como contexto (la cola, si es más largo)
+PROMPT_TOPE = (
+    "{pregunta}\n\n"
+    "[Ya has razonado sobre esto; tu razonamiento hasta ahora:]\n<razonamiento>\n{razonamiento}\n</razonamiento>\n\n"
+    "No sigas razonando. Con lo anterior, da AHORA la respuesta final completa al usuario, en español y con el "
+    "formato habitual."
+)
+
 PROMPT_TROCEO = (
     "Divide el encargo del usuario en entre 3 y 8 pasos secuenciales, cada uno pequeño para hacerse en una "
     "sola petición a un modelo local. Responde SOLO con JSON de la forma "
@@ -184,6 +195,66 @@ class MotorChat:
             p["orden"] = i
         return {"lista_id": lista_id, "padre_id": padre_id, "titulo": titulo, "pasos": pasos, "origen": origen}
 
+    # --- tope de razonamiento (doc 04, red de seguridad de los modelos thinking) ------------
+    async def _stream_con_tope(self, etiqueta: str, mensajes: list[dict[str, str]], opciones: dict[str, Any],
+                               think: bool | None, fraccion: float = TOPE_RAZONAMIENTO,
+                               etiqueta_respuesta: str | None = None) -> AsyncIterator[dict[str, Any]]:
+        """Como ollama.chat_stream, pero un modelo con thinking nunca se queda sin responder.
+
+        Cuenta los tokens de thinking (~1 por trozo); si alcanzan `fraccion` de num_predict sin que haya
+        empezado la respuesta, cierra el stream (Ollama deja de generar), emite {"tope": {...}} y hace una
+        segunda llamada con lo pensado como contexto y el presupuesto restante. Esa respuesta forzada la da
+        `etiqueta_respuesta` (un modelo SIN thinking, el instruct: doc 04 rev. 10), descargando antes el que
+        razona para tener un solo modelo en RAM. Sin él, el mismo modelo con thinking apagado (/no_think lo
+        añade el cliente; solo sirve si es híbrido). El último trozo `done` suma los tokens de las dos llamadas.
+        """
+        if not think:
+            async for t in self.ollama.chat_stream(etiqueta, mensajes, opciones, think):
+                yield t
+            return
+        num_predict = int(opciones.get("num_predict") or 0)
+        limite = max(1, int(num_predict * fraccion))
+        pensado, n_think, respondiendo, cortado = "", 0, False, False
+        gen = self.ollama.chat_stream(etiqueta, mensajes, opciones, think)
+        try:
+            async for t in gen:
+                m = t.get("message") or {}
+                if m.get("thinking"):
+                    pensado += m["thinking"]
+                    n_think += 1
+                if m.get("content"):
+                    respondiendo = True
+                yield t
+                if not respondiendo and not t.get("done") and n_think >= limite:
+                    cortado = True
+                    break
+        finally:
+            await gen.aclose()
+        if not cortado:
+            return
+
+        restante = max(num_predict - n_think, 0)
+        modelo2 = etiqueta_respuesta or etiqueta
+        yield {"tope": {"tokens_thinking": n_think, "limite": limite, "num_predict": num_predict,
+                        "restante": restante, "modelo_respuesta": modelo2}}
+        razonamiento = pensado.strip()
+        if len(razonamiento) > MAX_RAZONAMIENTO_CHARS:
+            razonamiento = "…" + razonamiento[-MAX_RAZONAMIENTO_CHARS:]
+        segunda = [dict(m) for m in mensajes]
+        for m in reversed(segunda):
+            if m.get("role") == "user":
+                m["content"] = PROMPT_TOPE.format(pregunta=m["content"], razonamiento=razonamiento)
+                break
+        if etiqueta_respuesta:
+            await self.ollama.asegurar_unico(etiqueta_respuesta)       # un solo modelo en RAM
+            think2 = None                                               # el instruct no razona: ni se pide
+        else:
+            think2 = False      # el cliente sube num_predict al mínimo de 768 y añade /no_think (qwen3)
+        async for t in self.ollama.chat_stream(modelo2, segunda, {**opciones, "num_predict": restante}, think2):
+            if t.get("done"):
+                t = {**t, "eval_count": (t.get("eval_count") or 0) + n_think, "eval_duration": None}
+            yield t
+
     # --- telemetría (doc 22) --------------------------------------------------
     def _telemetria(self, texto: str, plan, modelo: str | None, tier: str, esfuerzo: str,
                     thinking_activo: bool, cargando: bool = False) -> Telemetria:
@@ -335,13 +406,19 @@ class MotorChat:
                 eval_ns = None
                 tel = self._telemetria(texto, plan, modelo_real, tier, esfuerzo, bool(think), requiere_carga)
                 yield sse("telemetria", tel.evento())
-                async for trozo in con_ticks(self.ollama.chat_stream(
+                async for trozo in con_ticks(self._stream_con_tope(
                         plan.etiqueta_ollama, [{"role": "system", "content": plan.system_prompt}, *mensajes],
-                        opciones, think)):
+                        opciones, think, etiqueta_respuesta=plan.etiqueta_respuesta)):
                     if trozo is None:              # sin datos en ~0,5 s: el contador sigue corriendo
                         if tel.toca():
                             yield sse("telemetria", tel.evento())
                         continue
+                    if "tope" in trozo:            # doc 04 §Tope de razonamiento: se cortó el thinking
+                        yield sse("tope_razonamiento", trozo["tope"])
+                        continue
+                    if trozo.get("reclasificar"):  # doc 04 (B): lo mostrado como respuesta era razonamiento
+                        thinking, contenido = thinking + contenido, ""
+                        yield sse("reclasificar", {"thinking": thinking})
                     msg = trozo.get("message") or {}
                     if msg.get("thinking"):
                         thinking += msg["thinking"]

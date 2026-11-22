@@ -8,6 +8,8 @@ from backend.modes import lenguaje
 from backend.modes import tareas as tareas_mod
 from backend.modes.tareas import parsear_json_tolerante
 
+from .conftest import INSTRUCT
+
 HOY = date(2026, 11, 21)  # sábado
 D = lambda k: (HOY + timedelta(days=k)).isoformat()  # noqa: E731
 
@@ -74,7 +76,7 @@ def test_tst045_capa2_modelo_para_lo_ambiguo(client, fake):
     fake.json_respuestas.append(json.dumps({"texto_limpio": "estudiar", "dia_asignado": "2026-11-30", "prioridad": 3}))
     t = anadir(client, "estudiar a final de mes")[0]
     assert t["dia_asignado"] == "2026-11-30" and t["texto"] == "estudiar"
-    assert fake.chats[-1]["model"] == "qwen3:4b" and fake.chats[-1]["think"] is False
+    assert fake.chats[-1]["model"] == INSTRUCT and fake.chats[-1]["think"] is False
 
 
 # --- TST-041 organizar ---------------------------------------------------------------------------
@@ -90,7 +92,7 @@ def test_tst041_organizar_con_ia_produce_plan_por_dias(client, fake):
     por_id = {t["id"]: t for t in r["tareas"]}
     assert [por_id[x]["dia_asignado"] for x in (a, b, c)] == [D(0), D(1), D(2)]
     assert por_id[a]["estimacion_min"] == 120 and por_id[c]["estimacion_min"] == 30  # sin estimación → 30
-    assert fake.chats[-1]["model"] == "qwen3:4b"
+    assert fake.chats[-1]["model"] == INSTRUCT
     assert fake.chats[-1]["format"]["required"] == ["plan", "resumen"]  # salida estructurada con esquema
     assert fake.chats[-1]["think"] is False
     # La BBDD lo conserva (FR-043) y la lista guarda el resumen.
@@ -189,7 +191,9 @@ def test_tst046_reorganizar_respeta_fijadas(client, fake):
     por_id = {t["id"]: t for t in r["tareas"]}
     assert por_id[fija]["dia_asignado"] == D(3) and por_id[movida]["dia_asignado"] == D(2)
     assert por_id[libre]["dia_asignado"] == D(1) and r["respetadas"] == 2 and r["movidas"] == 1
-    enviado = json.loads(fake.chats[-1]["messages"][1]["content"].split("Datos:\n", 1)[1])
+    datos = fake.chats[-1]["messages"][1]["content"].split("Datos:\n", 1)[1]
+    assert "/no_think" not in datos              # el instruct no razona: no lleva marca (doc 04 rev. 10)
+    enviado = json.loads(datos)
     assert [t["id"] for t in enviado["tareas"]] == [libre]  # a la IA solo le llega lo libre
     assert {d["fecha"]: d["minutos_ya_ocupados"] for d in enviado["dias"]}[D(2)] == 30
     # Desfijar devuelve la tarea al reparto.

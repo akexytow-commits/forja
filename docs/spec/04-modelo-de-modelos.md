@@ -16,7 +16,8 @@ ollama.com al construir** (las etiquetas cambian). Recomendación para TU hardwa
 
 | alias FORJA | tier | etiqueta Ollama sugerida | tamaño Q4 | thinking | uso |
 |---|---|---|---|---|---|
-| `pequeno-general` | pequeno | `qwen3:4b` | ~2.6 GB | sí (conmutable) | chat, tareas, scripts cortos |
+| `pequeno-general` | pequeno | `qwen3:4b-instruct-2507` | ~2.6 GB | **no (instruct)** | chat, Tareas, **Seguridad medio** |
+| `pequeno-razonador` | pequeno | `qwen3:4b-thinking-2507` | ~2.6 GB | **sí (solo razona)** | **Seguridad extra** (fase de razonar) |
 | `pequeno-codigo` | pequeno | `qwen2.5-coder:3b` | ~2.0 GB | no | autocompletar/snippets rápidos |
 | `grande-general` | grande | `qwen3:8b` | ~5.0 GB | sí | respuestas de más calidad |
 | `grande-codigo` | grande | `qwen2.5-coder:7b` | ~4.7 GB | no | scripts/firmware de más enjundia |
@@ -50,16 +51,52 @@ El router aplica esta tabla. Es **la** regla; nada de magia oculta (ADR-0004).
 | modo | pequeno | grande | nube |
 |---|---|---|---|
 | scripts | `pequeno-codigo` | `grande-codigo` | `nube-frontera` |
-| seguridad | `pequeno-general` | `grande-general` | `nube-frontera` |
+| seguridad | ver override ↓ | ver override ↓ | `nube-frontera` |
 | tareas | `pequeno-general` | `grande-general` | `nube-frontera` |
+
+> **Override de Seguridad por esfuerzo (CPU + thinking).** Para que pedir un comando no se quede pensando
+> sin responder:
+> - **Seguridad + esfuerzo bajo** → modelo de **código** (`pequeno-codigo`/`grande-codigo`, sin thinking),
+>   `num_predict = 768`. Comandos/snippets directos (ffuf, nmap…): rápido y fiable.
+> - **Seguridad + esfuerzo medio** → `pequeno-general` = **instruct-2507** (sin razonamiento, no es un flag:
+>   es otro modelo), `num_predict = 1536`. Análisis directo, rápido (~1–2 min) y fiable.
+> - **Seguridad + esfuerzo extra** → `pequeno-razonador` = **thinking-2507** para la fase de razonar,
+>   `num_predict = 3072`, **con tope de razonamiento**: al saltar, la respuesta final la da el **instruct**
+>   (ver abajo). Análisis profundo, siempre responde.
+>
+> Resultado: bajo = comando ágil; medio = análisis rápido sin pensar; extra = análisis profundo acotado.
+> Motivo: en CPU, el "medium thinking" de qwen3:4b tarda ~8 min y a menudo agota el presupuesto pensando
+> sin responder; por eso medio va sin thinking y el thinking se reserva a extra con red de seguridad.
+
+## Tope de razonamiento (reasoning cap) — red de seguridad para modelos thinking
+Mecanismo reutilizable de MOD-013 para que un modelo con thinking **nunca** se quede sin responder:
+- Durante la generación se cuentan los tokens de **thinking**. Si llegan a ~**60 %** de `num_predict` sin
+  que haya empezado la respuesta, se **corta el razonamiento** y se hace una segunda llamada **con el modelo
+  instruct** (`qwen3:4b-instruct-2507`), pasándole lo ya pensado como contexto, para obtener la respuesta
+  final. (No vale re-llamar al modelo thinking: volvería a razonar; por eso la respuesta forzada la da el
+  instruct.)
+- **Red de seguridad (B):** si aun así algún texto llega con `…</think>` mezclado, se trata como
+  razonamiento y no se muestra como respuesta en el chat.
+- Garantiza respuesta y **acota el tiempo** (peor caso ~8 min en extra). Cubre la variabilidad de qwen3
+  (que razona más o menos de una vez a otra).
+- Se aplica siempre que se use un modelo thinking (hoy, Seguridad extra). Pruebas: TST-032b (el tope
+  dispara y produce respuesta).
 
 ### Paso 2 — parámetros por esfuerzo
 Para modelos **con thinking** (familia Qwen3):
 | esfuerzo | enable_thinking | reasoning_effort | temperatura | num_predict (máx salida) |
 |---|---|---|---|---|
-| bajo | false | — | 0.3 | 512 |
-| medio | true | medium | 0.5 | 1024 |
-| extra | true | high | 0.7 | 2048 |
+| bajo | false (+ `/no_think`) | — | 0.3 | 768 |
+| medio | true | medium | 0.5 | 2048 |
+| extra | true | high | 0.7 | 3072 |
+
+> **Importante — las variantes de Qwen3 4B NO son híbridas.** En este equipo, `qwen3:4b` es
+> **Thinking-2507**: solo sabe razonar, su plantilla siempre abre `<think>`, y `/no_think` / `think:false`
+> **no lo desactivan** (con `think:false` el razonamiento se mezcla con la respuesta). Por eso, para una
+> respuesta **sin razonar** no se usa un flag: se usa **otro modelo**, el **instruct** (`pequeno-general` =
+> `qwen3:4b-instruct-2507`). El modelo que razona (`pequeno-razonador`) se reserva a esfuerzo extra.
+> `num_predict` debe presupuestar **pensamiento + respuesta** juntos cuando sí se razona; un valor bajo hace
+> que agote el presupuesto pensando y no responda.
 
 Para modelos **sin thinking** (coder 3B/7B), el esfuerzo se emula:
 | esfuerzo | estrategia | temperatura | num_predict |

@@ -13,18 +13,24 @@ from fastapi.testclient import TestClient
 from backend.main import create_app
 
 TOKEN = "token-de-prueba"
+# Registro por defecto (doc 04 rev. 10): pequeno-general = instruct, pequeno-razonador = thinking-2507.
+INSTRUCT = "qwen3:4b-instruct-2507-q4_K_M"
+RAZONADOR = "qwen3:4b-thinking-2507-q4_K_M"
 
 
 class FakeOllama:
     def __init__(self):
         self.up = True
-        self.instalados = {"qwen2.5-coder:3b", "qwen3:4b"}
+        self.instalados = {"qwen2.5-coder:3b", INSTRUCT, RAZONADOR}
         self.cargados: list[str] = []
         self.descargados_de_ram: list[str] = []
         self.chats: list[dict] = []
         self.respuesta = ["Hola", ", aquí ", "tienes:\n```python\nprint('hola')\n```"]
         self.pensamiento = ["Analizo ", "la petición."]
         self.json_respuestas: list[str] = []  # respuestas en bruto para peticiones sin streaming (cola)
+        # Simula un modelo que razona aunque se pida think=false: el razonamiento sale en el contenido,
+        # terminado en "</think>" (lo que hace qwen3:4b-thinking-2507 de verdad).
+        self.fuga_think: list[str] = []
 
     def transport(self) -> httpx.MockTransport:
         return httpx.MockTransport(self.handle)
@@ -75,6 +81,8 @@ class FakeOllama:
             if body.get("think"):
                 trozos += [{"message": {"role": "assistant", "content": "", "thinking": t}, "done": False}
                            for t in self.pensamiento]
+            elif self.fuga_think:
+                trozos += [{"message": {"role": "assistant", "content": c}, "done": False} for c in self.fuga_think]
             trozos += [{"message": {"role": "assistant", "content": c}, "done": False} for c in self.respuesta]
             trozos.append({"message": {"role": "assistant", "content": ""}, "done": True,
                            "prompt_eval_count": 42, "eval_count": 17, "eval_duration": 2_000_000_000})

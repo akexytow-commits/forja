@@ -36,6 +36,102 @@ def normalizar(etiqueta: str) -> str:
     return etiqueta if ":" in etiqueta else f"{etiqueta}:latest"
 
 
+NO_THINK = "/no_think"
+NUM_PREDICT_MIN_NO_THINK = 768   # = router.NUM_PREDICT_MIN_NO_THINK (doc 04 rev. 8)
+
+
+def es_qwen3(etiqueta: str) -> bool:
+    """Modelos Qwen3 que razonan (híbridos o thinking). qwen2.5-coder y los qwen3 *instruct* no."""
+    e = normalizar(etiqueta).lower()
+    return e.startswith("qwen3") and "instruct" not in e
+
+
+ABRE_THINK, CIERRA_THINK = "<think>", "</think>"
+
+
+def _cola_parcial(texto: str, marca: str) -> int:
+    """Longitud del final de `texto` que podría ser el principio de `marca` (para no partir la etiqueta)."""
+    for n in range(min(len(marca) - 1, len(texto)), 0, -1):
+        if marca.startswith(texto[-n:]):
+            return n
+    return 0
+
+
+class FiltroThink:
+    """Red de seguridad (doc 04 §Tope de razonamiento, B): con el thinking apagado, un modelo que razona
+    igualmente lo mete en el contenido, terminado en `</think>`. Ese texto es razonamiento, no respuesta.
+
+    trozo(texto) → lista de ("thinking" | "content" | "reclasificar", texto). "reclasificar" significa: todo
+    el contenido ya emitido era razonamiento (el `</think>` llegó cuando ya se mostraba como respuesta).
+    """
+
+    def __init__(self, pensando: bool = False):
+        self.pensando = pensando      # True: lo que llegue es razonamiento hasta el </think>
+        self.inicio = True            # aún no ha llegado texto visible
+        self.cola = ""
+        self.emitido = False          # se emitió contenido (visible) desde el último </think>
+
+    def trozo(self, texto: str) -> list[tuple[str, str]]:
+        buf, self.cola, salida = self.cola + texto, "", []
+        if self.inicio:
+            limpio = buf.lstrip()
+            if not limpio or (len(limpio) < len(ABRE_THINK) and ABRE_THINK.startswith(limpio)):
+                self.cola = buf       # todavía no se sabe si empieza por <think>
+                return salida
+            self.inicio = False
+            if limpio.startswith(ABRE_THINK):
+                self.pensando, buf = True, limpio[len(ABRE_THINK):]
+        while CIERRA_THINK in buf:
+            antes, buf = buf.split(CIERRA_THINK, 1)
+            if self.pensando:
+                if antes:
+                    salida.append(("thinking", antes))
+            else:
+                if antes:
+                    salida.append(("content", antes))
+                salida.append(("reclasificar", ""))
+            self.pensando, self.emitido, buf = False, False, buf.lstrip("\r\n")
+        n = _cola_parcial(buf, CIERRA_THINK)
+        if n:
+            buf, self.cola = buf[:-n], buf[-n:]
+        if buf:
+            salida.append(("thinking" if self.pensando else "content", buf))
+            self.emitido = self.emitido or not self.pensando
+        return salida
+
+    def fin(self) -> list[tuple[str, str]]:
+        resto, self.cola = self.cola, ""
+        if self.inicio:
+            resto = resto.strip()
+        return [("thinking" if self.pensando else "content", resto)] if resto else []
+
+
+def quitar_razonamiento(texto: str) -> str:
+    """Respuesta completa (sin streaming): lo que va antes del último </think> es razonamiento."""
+    return texto.rsplit(CIERRA_THINK, 1)[-1].lstrip() if CIERRA_THINK in texto else texto
+
+
+def sin_thinking(etiqueta: str, mensajes: list[dict[str, str]], opciones: dict[str, Any],
+                 think: bool | None) -> tuple[list[dict[str, str]], dict[str, Any]]:
+    """Doc 04 rev. 8: qwen3 a veces razona aunque se pida think=false (y agota num_predict sin responder).
+    Siempre que se use qwen3 con thinking apagado, en cualquier modo: se añade /no_think al último mensaje
+    del usuario (más fiable que solo enable_thinking=false) y num_predict nunca baja de 768.
+    Trabaja sobre copias: lo que se guarda en la BBDD no lleva la marca."""
+    if think is not False or not es_qwen3(etiqueta):
+        return mensajes, opciones
+    mensajes = [dict(m) for m in mensajes]
+    for m in reversed(mensajes):
+        if m.get("role") == "user":
+            if NO_THINK not in m.get("content", ""):
+                m["content"] = f"{m.get('content', '').rstrip()}\n\n{NO_THINK}"
+            break
+    else:
+        mensajes.append({"role": "user", "content": NO_THINK})
+    opciones = dict(opciones)
+    opciones["num_predict"] = max(int(opciones.get("num_predict") or 0), NUM_PREDICT_MIN_NO_THINK)
+    return mensajes, opciones
+
+
 class OllamaClient:
     def __init__(self, base_url: str, transport: httpx.AsyncBaseTransport | None = None):
         self.base_url = base_url.rstrip("/")
@@ -109,6 +205,7 @@ class OllamaClient:
         opciones: dict[str, Any],
         think: bool | None,
     ) -> AsyncIterator[dict[str, Any]]:
+        mensajes, opciones = sin_thinking(etiqueta, mensajes, opciones, think)
         cuerpo: dict[str, Any] = {
             "model": normalizar(etiqueta),
             "messages": mensajes,
@@ -126,13 +223,36 @@ class OllamaClient:
                     if r.status_code >= 400:
                         await r.aread()
                         raise OllamaError(_mensaje_error(r.text))
+                    # Con el thinking apagado (o sin pedirlo), un `…</think>` en el contenido es razonamiento.
+                    # (No se da por razonamiento de entrada aunque el modelo sea "thinking": si nunca llegara el
+                    # </think>, se ocultaría la respuesta entera. Se muestra y, si llega, se reclasifica.)
+                    filtro = FiltroThink() if think is not True else None
                     async for linea in r.aiter_lines():
                         if not linea.strip():
                             continue
                         dato = json.loads(linea)
                         if "error" in dato:
                             raise OllamaError(dato["error"])
-                        yield dato
+                        if filtro is None:
+                            yield dato
+                            continue
+                        m = dato.get("message") or {}
+                        piezas = filtro.trozo(m.get("content") or "")
+                        if dato.get("done"):
+                            piezas += filtro.fin()
+                        if m.get("thinking"):
+                            piezas.insert(0, ("thinking", m["thinking"]))
+                        if not piezas and not dato.get("done"):
+                            continue
+                        for i, (tipo, texto) in enumerate(piezas):
+                            final = dato.get("done") and i == len(piezas) - 1
+                            base = {k: v for k, v in dato.items() if k != "message"} if final else {"done": False}
+                            if tipo == "reclasificar":
+                                yield {**base, "reclasificar": True, "message": {"role": "assistant", "content": ""}}
+                            else:
+                                yield {**base, "message": {"role": "assistant", tipo: texto}}
+                        if dato.get("done") and not piezas:
+                            yield {**dato, "message": {"role": "assistant", "content": ""}}
         except (httpx.ConnectError, httpx.ConnectTimeout) as e:
             raise OllamaCaido(str(e)) from e
 
@@ -142,6 +262,7 @@ class OllamaClient:
 
         formato: "json", un esquema JSON (salidas estructuradas de Ollama) o None.
         """
+        mensajes, opciones = sin_thinking(etiqueta, mensajes, opciones, think)
         cuerpo: dict[str, Any] = {"model": normalizar(etiqueta), "messages": mensajes, "stream": False,
                                   "keep_alive": KEEP_ALIVE, "options": opciones}
         if formato:
@@ -158,7 +279,8 @@ class OllamaClient:
         if r.status_code >= 400:
             raise OllamaError(_mensaje_error(r.text))
         try:
-            return r.json()["message"]["content"]
+            contenido = r.json()["message"]["content"]
+            return quitar_razonamiento(contenido) if think is not True else contenido
         except (ValueError, KeyError, TypeError) as e:
             raise OllamaError("Respuesta de Ollama sin contenido.") from e
 

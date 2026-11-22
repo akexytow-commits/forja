@@ -25,14 +25,14 @@ def test_tst006_extra_activa_thinking_high_en_qwen3(modo):
     assert plan.thinking_nativo
     assert plan.params["enable_thinking"] is True
     assert plan.params["reasoning_effort"] == "high"
-    assert plan.params["num_predict"] == 2048
+    assert plan.params["num_predict"] == 3072      # doc 04 rev. 8: thinking + respuesta caben en CPU
     assert plan.params["temperatura"] == 0.7
 
 
 def test_bajo_desactiva_thinking():
     plan = resolver("tareas", "grande", "bajo", 0, REGISTRO)
     assert plan.params["enable_thinking"] is False
-    assert plan.params["num_predict"] == 512
+    assert plan.params["num_predict"] == 768       # nunca < 768 con qwen3 sin thinking
 
 
 def test_coder_emula_esfuerzo_por_prompt():

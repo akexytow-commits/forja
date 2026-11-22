@@ -42,7 +42,7 @@ from .config import HOST, OLLAMA_URL, PORT, TOKEN_HEADER, UI_DIR, data_dir
 from .db import DB, ahora
 from .ollama_client import (ModeloFaltante, OllamaCaido, OllamaClient, OllamaError,
                             arrancar_ollama, ejecutable_ollama, normalizar)
-from .router import FAMILIA
+from .router import FAMILIA, OVERRIDE_ESFUERZO
 from .sistema import disco_libre_mb, ram_libre_mb
 
 log = logging.getLogger("forja")
@@ -390,7 +390,8 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
         familia: dict[str, dict[str, str]] = {}
         for (modo, tier), alias in FAMILIA.items():
             familia.setdefault(modo, {})[tier] = alias
-        return {"modelos": _registro(), "familia": familia}
+        override = {f"{m}:{e}": o["familia"] for (m, e), o in OVERRIDE_ESFUERZO.items() if "familia" in o}   # "seguridad:bajo"
+        return {"modelos": _registro(), "familia": familia, "override": override}
 
     @app.post("/modelos/descargar")
     async def modelos_descargar(cuerpo: AliasIn):

@@ -26,7 +26,7 @@ Si faltan, la propia app lo detecta y lo descarga desde la pantalla *Estado del 
 | 6–7 | pendiente (empaquetado, etc.) |
 | 8 Estudio de Apariencia | pendiente (doc 20, al final) |
 
-Pruebas cubiertas (154): TST-001…006, 010…012, 020…023, 030…039, 040…048, 060…063, 070…072, 075…079, 100…102 (+ token, validación, CRUD).
+Pruebas cubiertas (170): TST-001…006, 010…012, 020…023, 030…039, 032b, 040…048, 060…063, 070…072, 075…079, 100…102 (+ token, validación, CRUD).
 La UI de la Rama 5 se recorrió además en Edge headless (CDP) con un Ollama falso lento: plantillas, nuevo proyecto,
 telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobrescribir, export, ajustes y cambio de tema/acento, sin errores de consola.
 
@@ -59,7 +59,7 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
   (`~40 s`, `~2 min`). El evento lleva también `thinking_ms`; `messages` guarda `gen_ms` y `thinking_ms` (migración 008).
   En la Nube los tokens en vivo son aproximados (por caracteres).
 - **Apariencia** en Ajustes es la versión básica (presets cerrados); el estudio completo con contraste y fondos es la Rama 8.
-- **Spec rev (7)**: copiada a `docs/spec`.
+- **Spec rev (10)**: copiada a `docs/spec` (doc 04: registro 2507, override de Seguridad y tope de razonamiento; TST-032b).
 - **Doc 21 (Política de Restricciones) aplicado** a `backend/prompts/scripts.txt`, `seguridad.txt` y `tareas.txt`
   (2026-11-22): tono de experto autorizado, directo, sin moralinas ni descargos; en Seguridad, la lista de lo permitido
   sobre objetivos en alcance (recon, fuzzing, prueba de credenciales si el programa lo permite, PoC mínima, Metasploit/
@@ -74,9 +74,56 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
     modelo, con su reconducción. **Pero** pidiendo un comando de ffuf no llega a una respuesta final: en *bajo*
     razona en inglés dentro de la respuesta y agota los 512 tokens; en *medio* gasta los 1024 pensando. Con el prompt
     **antiguo** pasa exactamente lo mismo, así que no lo causa el doc 21: es el modelo (qwen3 ignora a veces `think:false`)
-    con los topes de `num_predict`. Pendiente de decidir (es lógica, no prompt): subir `num_predict` cuando hay thinking
-    y/o usar el modelo de código para respuestas cortas de comandos.
+    con los topes de `num_predict`. Resuelto en la sección «Modo Seguridad con modelos thinking en CPU» de abajo.
   - Tareas (qwen3:4b, medio): organizó 3 tareas en 3 días con estimaciones y un resumen directo; 85 s.
+- **Modo Seguridad con modelos thinking en CPU** (doc 04 rev. 10, 2026-11-22).
+  - **Causa raíz.** El `qwen3:4b` de Ollama es **Qwen3-4B Thinking-2507**: no es híbrido. Su plantilla abre siempre
+    `<think>`, y ni `/no_think` ni `think:false` lo apagan. Con `think:false`, Ollama deja de separar el
+    razonamiento y este llega mezclado en la respuesta, terminado en `</think>`. Para responder sin razonar no
+    vale un flag: hace falta **otro modelo**.
+  - **Registro** (migración 009). Etiquetas reales de Ollama: las del doc 04 sin sufijo no existen en el
+    registro de Ollama, así que llevan `-q4_K_M`.
+    - `pequeno-general` → `qwen3:4b-instruct-2507-q4_K_M` (instruct, sin thinking).
+    - Nuevo `pequeno-razonador` → `qwen3:4b-thinking-2507-q4_K_M` (mismo blob que el antiguo `qwen3:4b`).
+    - La migración solo cambia `pequeno-general` si seguía en `qwen3:4b`; si se había editado en Ajustes, se respeta.
+    - Consecuencia: Chat y Tareas en tier pequeño usan ahora el instruct; el thinking de esfuerzo extra se emula por prompt.
+  - **Router** (`OVERRIDE_ESFUERZO` en `router.py`):
+    - **bajo** → modelo de **código** (`pequeno-codigo`/`grande-codigo`), `num_predict` 768: comandos y
+      snippets directos (ffuf, nmap…).
+    - **medio** → `pequeno-general` = **instruct**, `num_predict` 1536: análisis directo. En grande, qwen3:8b
+      (híbrido) va con thinking apagado + `/no_think`.
+    - **extra** → `pequeno-razonador` = **thinking-2507**, `num_predict` 3072, con tope de razonamiento. El
+      análisis de hallazgos (`/seguridad/.../analizar`) usa también el razonador en extra.
+    - Si la BBDD no tiene `pequeno-razonador`, se usa `pequeno-general`.
+    - El estimador mantiene su límite de salida en 2048 × factor (`SALIDA_LOCAL_BASE`).
+  - **`/no_think`** (`ollama_client.sin_thinking`): solo para qwen3 que razonan (no para los `*instruct*`) cuando
+    el thinking va apagado. Se añade al último mensaje y `num_predict` sube a 768 como mínimo. Trabaja sobre copias.
+  - **Tope de razonamiento** (`MotorChat._stream_con_tope`, reutilizable para cualquier llamada con thinking del chat):
+    - Si el thinking llega al 60 % de `num_predict` sin que haya empezado la respuesta, cierra el stream.
+    - Emite `tope_razonamiento` {tokens_thinking, limite, num_predict, restante, modelo_respuesta}.
+    - Hace una segunda llamada con la pregunta + lo pensado (`<razonamiento>…`, hasta 12 000 caracteres) y el
+      presupuesto restante, con el **modelo de respuesta**:
+      - con el razonador, el instruct del tier (`PlanDeModelo.etiqueta_respuesta`). Antes descarga el que
+        razona, para que solo haya un modelo en RAM;
+      - con un modelo híbrido, el mismo con thinking apagado + `/no_think`.
+    - `fin.tokens_out` suma las dos llamadas.
+    - Desviación: `tope_razonamiento` no está en API-003; es informativo.
+  - **Red de seguridad (B)** (`ollama_client.FiltroThink`). Con el thinking apagado o sin pedir, en cualquier modo:
+    - lo que va entre `<think>` y `</think>` sale como `thinking`;
+    - si llega un `</think>` cuando ya se mostraba como respuesta, se emite `reclasificar`: el Motor mueve ese
+      texto al razonamiento y la UI lo pliega;
+    - en las respuestas completas (`chat_completo`, JSON de Tareas/Seguridad) se descarta lo anterior al `</think>`.
+    - Desviación: `reclasificar` (SSE) es un evento nuevo.
+  - La UI muestra en la línea de estado el modelo real según el esfuerzo (`/modelos` expone `override`).
+  - Pruebas: TST-032b y el resto en `tests/test_router_seguridad.py`.
+  - **Verificación con Ollama real**: 2026-11-22, portátil de 7,3 GB, solo CPU, mismo engagement de laboratorio.
+    - **bajo** (`qwen2.5-coder:3b`): comando `ffuf … -fc 404` directo; 66 s, 245 tokens.
+    - **medio** (instruct): análisis completo y en español que termina solo (1237 de 1536 tokens, sin cortes ni
+      razonamiento mezclado); **318 s**, no los 1–2 min del doc 04. En CPU va a ~4 tok/s. Calidad justa: lo llama
+      «enumeración de IDs / control de acceso» en vez de IDOR por su nombre.
+    - **extra** (thinking-2507 → instruct): el tope saltó a 1843 tokens de razonamiento. La respuesta del instruct
+      **se completó** («IDOR… Impacto: Alto… Cómo verificar… Conclusión»; 3005 de 3072 tokens en total). En total
+      **1072 s (~18 min)**, casi todo razonando. Antes (rev. 9), medio y extra se cortaban sin respuesta.
 - **Academia**: `learning_sections.tipo` admite también `evaluacion` (la evaluación de final de módulo de A3) y
   guarda `pregunta`/`respuesta_esperada` (alternativas con `|`; nunca viaja a la UI). La lección generada se guarda
   en `learning_progress.leccion_md`. Las flags de salas externas no se pueden verificar: se registran como

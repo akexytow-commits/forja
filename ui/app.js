@@ -118,8 +118,9 @@
   const ajuste = (k, def) => (window.ForjaApp.ajustes?.[k] ?? def);
 
   // ---------------------------------------------------------------- utilidades
-  function etiquetaPara(modo, tier) {
-    const alias = st.familia?.[modo]?.[tier];
+  function etiquetaPara(modo, tier, esfuerzo = st.esfuerzo) {
+    // Override por esfuerzo del router (doc 04): Seguridad + bajo usa el modelo de código.
+    const alias = st.override?.[`${modo}:${esfuerzo}`]?.[tier] || st.familia?.[modo]?.[tier];
     const m = st.modelos.find((x) => x.alias === alias);
     return m ? m.etiqueta : "";
   }
@@ -218,6 +219,7 @@
       b.title = t(`esfuerzo.${e}.ayuda`);
       b.addEventListener("click", () => {
         st.esfuerzo = e; pintarSelector(); guardarEstado(); actualizarLinea();
+        if (st.modo === "seguridad") cargarModeloActual();   // el esfuerzo puede cambiar de modelo (override)
         window.ForjaTareas?.alCambiarSelector();
         SEG()?.alCambiarSelector();
       });
@@ -549,7 +551,8 @@
         el.querySelector(".razon-wrap").append(det);
         if (s.streaming) { det.open = true; s._autoAbierto = true; }
       }
-      det.querySelector("summary").textContent = razonando ? t("chat.razonando") : (plan && !s.thinking ? t("chat.plan") : t("chat.razonamiento"));
+      det.querySelector("summary").textContent = razonando ? t("chat.razonando")
+        : (plan && !s.thinking ? t("chat.plan") : t(s.tope ? "chat.razon_tope" : "chat.razonamiento"));
       const txt = det.querySelector(".razon-txt");
       txt.textContent = razon;
       if (razonando) txt.scrollTop = txt.scrollHeight;
@@ -659,6 +662,12 @@
           ponerCabecera(el, d.modelo, d.tier, d.esfuerzo);
           if (d.requiere_carga) linea(`<span class="chispa"></span>${esc(t("estado.cambiando_modelo"))} <span>${esc(d.modelo)}</span>`);
           if (st.salud && d.tier !== "nube") st.salud.modelo_cargado = d.modelo;
+        } else if (ev === "tope_razonamiento") {
+          s.tope = true;                                // doc 04: thinking cortado, llega la respuesta final
+          if (st.salud && d.modelo_respuesta) st.salud.modelo_cargado = d.modelo_respuesta;
+        } else if (ev === "reclasificar") {
+          // doc 04 (B): lo que se mostraba como respuesta era razonamiento (llegó un "</think>").
+          s.thinking = d.thinking; s.contenido = "";
         } else if (ev === "thinking") {
           s.thinking += d.texto_parcial; s.fase = "generando";
         } else if (ev === "token") {
@@ -1193,6 +1202,7 @@
     const m = await api("/modelos");
     st.modelos = m.modelos;
     st.familia = m.familia;
+    st.override = m.override || {};
 
     pintarModos();
     mostrarVista();

@@ -20,7 +20,7 @@ from .. import audit, cloud_client
 from ..cloud_client import ClienteNube, NubeError
 from ..db import DB, ahora
 from ..ollama_client import ModeloFaltante, OllamaCaido, OllamaClient, OllamaError
-from ..router import FAMILIA, cargar_prompt
+from ..router import FAMILIA, alias_para, cargar_prompt
 from . import guardarrailes
 from .tareas import parsear_json_tolerante
 
@@ -201,8 +201,13 @@ class Seguridad:
                                  reconduccion=bloqueo.reconduccion)
 
     # --- modelo ----------------------------------------------------------------------------------
-    def _etiqueta(self, tier: str) -> str:
-        fila = self.db.one("SELECT etiqueta FROM models WHERE alias = ?", (FAMILIA[(MODO, tier)],))
+    def _etiqueta(self, tier: str, esfuerzo: str | None = None) -> str:
+        """Modelo general del tier; con esfuerzo "extra", el que razona (pequeno-razonador, doc 04 rev. 10)."""
+        alias = FAMILIA[(MODO, tier)]
+        if esfuerzo == "extra":
+            registro = {f["alias"]: f for f in self.db.query("SELECT alias FROM models")}
+            alias = alias_para(MODO, tier, esfuerzo, registro)
+        fila = self.db.one("SELECT etiqueta FROM models WHERE alias = ?", (alias,))
         if not fila or not fila["etiqueta"]:
             raise SeguridadError(400, "MODELO_FALTA", "No hay modelo configurado para ese tier.")
         return fila["etiqueta"]
@@ -239,7 +244,7 @@ class Seguridad:
                   "relevante, devuelve una lista vacía y explícalo en el resumen. No inventes CVE ni versiones que "
                   "no estén en los datos. Responde en español.\n\n"
                   f"<datos_recon>\n{datos_envio}\n</datos_recon>")
-        etiqueta = None if tier == "nube" else self._etiqueta(tier)
+        etiqueta = None if tier == "nube" else self._etiqueta(tier, esfuerzo)
         system = self._system(e, tier, esfuerzo, etiqueta)
         try:
             if tier == "nube":
