@@ -107,9 +107,12 @@ Para modelos **con thinking** (familia Qwen3):
 > instrucciones en el prompt** (como con los modelos de código). El `pequeno-razonador` se usa solo en
 > Seguridad extra.
 >
-> **Rendimiento real medido:** medio (instruct) ~5 min y análisis algo flojo (puede no nombrar la clase de
-> vulnerabilidad); extra ~18 min y análisis correcto. Mejora recomendada: en el prompt de Seguridad-medio,
-> exigir **nombrar la clase de vulnerabilidad primero** y luego explicar.
+> **Rendimiento real medido:** extra ~18 min, análisis correcto. Medio (instruct), tras la mejora de prompt:
+> ~4 min (219–310 s) y más conciso.
+> **Prompt de Seguridad-medio (implementado):** empieza **nombrando la clase de vulnerabilidad por su nombre
+> estándar** (p. ej. "IDOR (Insecure Direct Object Reference)"), **sin números de catálogo (CWE/OWASP)**: el
+> 4B los **alucina** aunque se le pida darlos solo si está seguro (devolvió CWE-601/602 y OWASP A03, todos
+> incorrectos). Extra no lleva esta instrucción porque ya identifica bien la clase razonando.
 
 Para modelos **sin thinking** (coder 3B/7B), el esfuerzo se emula:
 | esfuerzo | estrategia | temperatura | num_predict |
