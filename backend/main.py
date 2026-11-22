@@ -1010,28 +1010,43 @@ def _puerto_libre(host: str, port: int) -> bool:
         return s.connect_ex((host, port)) != 0
 
 
-def main() -> None:
+def _puerto_disponible(preferido: int, explicito: bool) -> int:
+    """El puerto de siempre si está libre; si lo ocupa otra app (FORJA ya se descartó con el mutex), uno libre."""
+    if _puerto_libre(HOST, preferido):
+        return preferido
+    if explicito:
+        raise SystemExit(f"El puerto {preferido} ya está en uso. Elige otro con --puerto.")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, 0))
+        libre = s.getsockname()[1]
+    log.info("El puerto %s está ocupado por otra aplicación; uso el %s.", preferido, libre)
+    return libre
+
+
+def _arrancar(args: argparse.Namespace) -> None:
     import uvicorn
 
-    p = argparse.ArgumentParser(description="FORJA — IA local")
-    p.add_argument("--sin-ventana", action="store_true", help="abrir en el navegador en vez de en ventana propia")
-    p.add_argument("--puerto", type=int, default=PORT)
-    args = p.parse_args()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+    from . import escritorio
 
-    if not _puerto_libre(HOST, args.puerto):
-        raise SystemExit(f"El puerto {args.puerto} ya está en uso (¿FORJA ya abierta?). Usa --puerto.")
+    # ST-060 (1/3): una sola FORJA por sesión de Windows.
+    if not escritorio.instancia_unica():
+        escritorio.mensaje("FORJA ya está abierta. Búscala en la barra de tareas.")
+        return
+    puerto = _puerto_disponible(args.puerto if args.puerto is not None else PORT, args.puerto is not None)
 
+    # ST-060 (2/3): backend arriba — crea %APPDATA%\FORJA y aplica las migraciones de la BBDD (DB.migrate).
     app = create_app()
-    server = uvicorn.Server(uvicorn.Config(app, host=HOST, port=args.puerto, log_level="warning"))
+    server = uvicorn.Server(uvicorn.Config(app, host=HOST, port=puerto, log_level="warning"))
     hilo = threading.Thread(target=server.run, daemon=True)
     hilo.start()
     while not server.started:
         if not hilo.is_alive():
-            raise SystemExit("El backend no pudo arrancar.")
+            raise RuntimeError("El backend no pudo arrancar (¿otro programa en el puerto?).")
         time.sleep(0.05)
 
-    url = f"http://{HOST}:{args.puerto}/"
+    # ST-060 (3/3): la interfaz comprueba Ollama (/salud) y, si falta Ollama o un modelo necesario, abre
+    # SCR-008 con la guía (arrancar Ollama / descargar el modelo); si todo está bien, el shell (SCR-001).
+    url = f"http://{HOST}:{puerto}/"
     log.info("FORJA escuchando en %s (datos en %s)", url, app.state.db.path)
     if not args.sin_ventana:
         try:
@@ -1058,6 +1073,35 @@ def main() -> None:
         hilo.join()
     except KeyboardInterrupt:
         server.should_exit = True
+
+
+def main() -> None:
+    from . import escritorio
+    from .config import CONGELADO
+
+    p = argparse.ArgumentParser(prog="FORJA", description="FORJA — IA local")
+    p.add_argument("--sin-ventana", action="store_true", help="abrir en el navegador en vez de en ventana propia")
+    p.add_argument("--puerto", type=int, default=None, help=f"puerto local del backend (por defecto {PORT})")
+    p.add_argument("--instalar", action="store_true",
+                   help="copia FORJA.exe a %%LOCALAPPDATA%%\\Programs\\FORJA y crea los accesos directos con icono")
+    args = p.parse_args()
+    registro = escritorio.configurar_registro()
+    try:
+        if args.instalar:
+            r = escritorio.instalar()
+            escritorio.mensaje(f"FORJA instalada en:\n{r['exe']}\n\nAccesos directos creados en el Escritorio y en el "
+                               "menú Inicio. Ábrela con doble clic.")
+            return
+        _arrancar(args)
+    except SystemExit:
+        raise
+    except Exception as e:  # noqa: BLE001 — sin consola, el usuario debe ver por qué no arrancó
+        log.exception("FORJA no pudo arrancar")
+        if CONGELADO or registro:
+            escritorio.mensaje(f"FORJA no pudo arrancar:\n\n{e}\n\nDetalles en:\n{registro or escritorio.ruta_log()}",
+                               error=True)
+            raise SystemExit(1) from e
+        raise
 
 
 if __name__ == "__main__":
