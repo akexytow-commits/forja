@@ -27,9 +27,11 @@
   }
   function errorToast(e) { toast(`<span class="mal">${esc(e.message || e)}</span>`); }
 
+  const fijo = () => document.documentElement.dataset.proyectos === "fijo";
   function cerrarPops(excepto) {
     for (const [btn, pop] of [["#btn-proyecto", "#pop-proyectos"], ["#btn-plantillas", "#pop-plantillas"]]) {
       if (pop === excepto) continue;
+      if (pop === "#pop-proyectos" && fijo()) continue;     // SC1 = fijo: el panel no se cierra
       $(pop).hidden = true;
       $(btn).setAttribute("aria-expanded", "false");
     }
@@ -68,6 +70,7 @@
   function alCambiarHilo(hilo) {
     st.hilo = hilo;
     pintarBarra();
+    if (fijo()) pintarProyectos();          // el panel fijo marca el proyecto del hilo abierto
   }
 
   // ---------------------------------------------------------------- SCR-011 desplegable
@@ -116,6 +119,31 @@
       if (pid != null) toast(esc(fmt("proy.asociado_ok", { nombre: proyectoDe(pid)?.nombre || "" })), 3000);
       if (!$("#pop-proyectos").hidden) pintarProyectos();
     } catch (e) { errorToast(e); }
+  }
+
+  /* SC1 (doc 13): "desplegable" = popover desde la barra del chat; "fijo" = el mismo panel, siempre visible
+     a la izquierda del chat de Scripts. Se cambia en vivo desde Ajustes, sin recargar. */
+  function aplicarModo() {
+    const pop = $("#pop-proyectos");
+    const vista = document.querySelector('.vista[data-vista="scripts"]');
+    let panel = $("#proy-fijo");
+    if (fijo()) {
+      if (!panel) {
+        panel = document.createElement("aside");
+        panel.id = "proy-fijo";
+        panel.className = "proy-fijo";
+        panel.setAttribute("aria-label", t("proy.titulo"));
+      }
+      if (panel.parentElement !== vista) vista.prepend(panel);
+      if (pop.parentElement !== panel) panel.append(pop);
+      pop.hidden = false;
+      $("#btn-proyecto").setAttribute("aria-expanded", "true");
+      cargarProyectos().then(pintarProyectos);
+    } else {
+      const ancla = $("#btn-proyecto").parentElement;
+      if (pop.parentElement !== ancla) { ancla.append(pop); pop.hidden = true; $("#btn-proyecto").setAttribute("aria-expanded", "false"); }
+      panel?.remove();
+    }
   }
 
   // ---------------------------------------------------------------- BTN-034 nuevo proyecto
@@ -290,7 +318,10 @@
   function init() {
     $("#btn-exportar").title = t("export.conversacion");
     $("#btn-exportar").setAttribute("aria-label", t("export.conversacion"));
-    $("#btn-proyecto").addEventListener("click", () => alternarPop("#btn-proyecto", "#pop-proyectos", async () => { await cargarProyectos(); pintarProyectos(); }));
+    $("#btn-proyecto").addEventListener("click", () => {
+      if (fijo()) { $("#proy-lista button")?.focus(); return; }        // ya está a la vista
+      alternarPop("#btn-proyecto", "#pop-proyectos", async () => { await cargarProyectos(); pintarProyectos(); });
+    });
     $("#btn-plantillas").addEventListener("click", () => alternarPop("#btn-plantillas", "#pop-plantillas", pintarPlantillas));
     $("#btn-exportar").addEventListener("click", exportar);
     $("#proy-nuevo").addEventListener("click", () => { cerrarPops(); abrirNuevoProyecto(async (p) => { await asociar(p.id); }); });
@@ -315,7 +346,7 @@
       if (b) abrirCarpeta(Number(b.dataset.abrirProy));
       if (e.target.closest("[data-abrir-export]")) A().api("/export/abrir-carpeta?tipo=conversaciones", { method: "POST" }).catch(errorToast);
     });
-    document.addEventListener("click", (e) => { if (!e.target.closest(".pop-ancla")) cerrarPops(); });
+    document.addEventListener("click", (e) => { if (!e.target.closest(".pop-ancla, .proy-fijo")) cerrarPops(); });
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
       cerrarPops();
@@ -323,7 +354,8 @@
       else if (!$("#dlg-guardar").hidden) $("#dlg-guardar").hidden = true;
     });
     cargarProyectos().then(pintarBarra);
+    aplicarModo();
   }
 
-  window.ForjaProyectos = { init, alCambiarHilo, guardarBloque, toast, pintarBarra };
+  window.ForjaProyectos = { init, alCambiarHilo, guardarBloque, toast, pintarBarra, aplicarModo };
 })();

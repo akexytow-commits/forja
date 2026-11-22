@@ -110,8 +110,45 @@
     validarForm();
   }
 
+  // ---------------------------------------------------------------- SG1: gate como asistente por pasos
+  const asistente = () => document.documentElement.dataset.gate === "asistente";
+  const alcanceItems = () => $("#sg-alcance").value.split(/\n|,|;/).map((x) => x.trim()).filter((x) => x && !x.startsWith("#"));
+  const paso1Ok = () => !!($("#sg-nombre").value.trim() && $("#sg-alcance").value.trim());
+
+  function pintarPasos() {
+    const form = $("#sg-gate-form");
+    const a = asistente();
+    if (!a || !s.paso) s.paso = 1;
+    form.dataset.paso = s.paso;
+    $("#sg-pasos").hidden = !a;
+    form.querySelectorAll("[data-paso]").forEach((el) => {
+      el.hidden = a ? Number(el.dataset.paso) !== s.paso : el.hasAttribute("data-solo-asistente");
+    });
+    form.querySelectorAll("#sg-pasos li").forEach((li) => {
+      const n = Number(li.dataset.n);
+      li.classList.toggle("hecho", n < s.paso);
+      if (n === s.paso) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
+    });
+    $("#sg-atras").hidden = !a || s.paso === 1;
+    $("#sg-siguiente").hidden = !a || s.paso === 3;
+    $("#sg-siguiente").disabled = s.paso === 1 && !paso1Ok();
+    $("#sg-entrar").hidden = a && s.paso !== 3;
+    if (a && s.paso === 3) {
+      $("#sg-resumen").innerHTML = `<h4>${E($("#sg-nombre").value.trim())}</h4>` +
+        `<div class="sg-chips">${alcanceItems().slice(0, 12).map((x) => `<code>${E(x)}</code>`).join("")}</div>`;
+    }
+  }
+  function irPaso(n) {
+    if (n > 1 && !paso1Ok()) n = 1;
+    s.paso = Math.max(1, Math.min(3, n));
+    pintarPasos();
+    const foco = { 1: "#sg-nombre", 2: "#sg-siguiente", 3: "#sg-declaro" }[s.paso];
+    requestAnimationFrame(() => $(foco)?.focus());
+  }
+
   function editar(e) {
     s.editando = e.id;
+    s.paso = 1;
     $("#sg-nombre").value = e.nombre;
     $("#sg-alcance").value = e.alcance;
     $("#sg-notas").value = e.notas || "";
@@ -122,6 +159,7 @@
   }
   function limpiarForm() {
     s.editando = null;
+    s.paso = 1;
     for (const id of ["#sg-nombre", "#sg-alcance", "#sg-notas"]) $(id).value = "";
     $("#sg-declaro").checked = false;
     msg("#sg-gate-msg", "");
@@ -130,8 +168,8 @@
   function validarForm() {
     const ok = $("#sg-nombre").value.trim() && $("#sg-alcance").value.trim() && $("#sg-declaro").checked;
     $("#sg-entrar").disabled = !ok;
-    const lineas = $("#sg-alcance").value.split(/\n|,|;/).map((x) => x.trim()).filter((x) => x && !x.startsWith("#"));
-    $("#sg-alcance-previa").innerHTML = lineas.slice(0, 12).map((x) => `<code>${E(x)}</code>`).join("");
+    $("#sg-alcance-previa").innerHTML = alcanceItems().slice(0, 12).map((x) => `<code>${E(x)}</code>`).join("");
+    pintarPasos();
   }
 
   async function enviarGate() {
@@ -262,7 +300,7 @@
     $("#sg-manual").hidden = !s.nuevoManual;
     for (const f of s.findings) {
       const tr = document.createElement("tr");
-      tr.className = "sg-fila" + (s.abierto === f.id ? " abierta" : "");
+      tr.className = "sg-fila sev-" + (f.severidad_estim || "nd") + (s.abierto === f.id ? " abierta" : "");   // sev-*: SG2 tarjetas
       tr.tabIndex = 0;
       tr.innerHTML = `<td>${sevChip(f.severidad_estim)}</td><td class="tit">${E(f.titulo)}</td><td>${E(f.clase || "—")}</td>` +
         `<td>${estadoChip(f.estado)}</td><td class="org">${E(T("seg.origen." + f.origen))}</td>`;
@@ -422,7 +460,17 @@
     enlazado = true;
     for (const id of ["#sg-nombre", "#sg-alcance", "#sg-notas"]) $(id).addEventListener("input", validarForm);
     $("#sg-declaro").addEventListener("change", validarForm);
-    $("#sg-gate-form").addEventListener("submit", (ev) => { ev.preventDefault(); enviarGate(); });
+    $("#sg-gate-form").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      if (asistente() && s.paso < 3) { if (s.paso > 1 || paso1Ok()) irPaso(s.paso + 1); return; }   // Enter = Siguiente
+      enviarGate();
+    });
+    $("#sg-siguiente").addEventListener("click", () => irPaso(s.paso + 1));
+    $("#sg-atras").addEventListener("click", () => irPaso(s.paso - 1));
+    $("#sg-pasos").addEventListener("click", (ev) => {
+      const li = ev.target.closest("li");
+      if (li && Number(li.dataset.n) < s.paso) irPaso(Number(li.dataset.n));     // volver a un paso hecho
+    });
     $("#sg-cancelar-ed").addEventListener("click", limpiarForm);
     $("#sg-salir").addEventListener("click", salir);
     $("#sg-editar-alcance").addEventListener("click", async () => {
@@ -475,5 +523,7 @@
     aprendiendo,
     contenedorChat: () => $("#sg-chat"),
     alCambiarSelector() { if (s.eng && s.tab === "analisis") pintarAnalisis(); },
+    // Rama 6: el gate (SG1) y los hallazgos (SG2) se repintan al cambiar la interfaz en Ajustes.
+    alCambiarInterfaz() { if (!enlazado) return; pintarPasos(); if (s.eng && s.tab === "hallazgos") pintarHallazgos(); },
   };
 })();

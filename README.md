@@ -23,10 +23,11 @@ Si faltan, la propia app lo detecta y lo descarga desde la pantalla *Estado del 
 | 4 Modo Seguridad | ✅ gate de alcance y autorización a pantalla completa (SG1, ST-030 en backend: sin engagement autorizado no hay chat ni análisis; cambiar el alcance obliga a reconfirmar); guardarraíles como código (`modes/guardarrailes.py`: alcance por dominio/comodín/IP/CIDR y lista «nunca» G-3 — malware, evasión de AV/EDR, borrar rastros, DoS, phishing, objetivos fuera de alcance — se bloquea antes de llamar al modelo y se audita); chat por engagement; análisis de recon con salida estructurada → hallazgos «idea»; tabla de hallazgos (SG2) con validación que exige evidencia; informe estilo HackerOne (SG3) en streaming que une varios enfoques; export .md a «Documentos\FORJA exportados\informes» (no dentro del proyecto: en Windows Documents\FORJA = Documents\forja) |
 | 4b Academia + Laboratorio Linux + Copiloto | ✅ en Seguridad, selector **Trabajo / Aprender** y **Ofensivo / Defensivo** (FR-035, auditado). Academia: currículo semilla Ruta → Módulo → Lección (8 rutas por habilidad y por rol, 18 módulos, 32 lecciones, 17 herramientas; migración 007); el tutor prepara cada lección (teoría + ejercicio + herramientas + pregunta) y la guarda; **gate de laboratorio** (BTN-087: sin declarar no hay prácticas, pistas de ejercicios, copiloto ni Linux; auditado); **pistas progresivas** 1-2-3 (sin código en los niveles 1-2; la respuesta se tapa aunque el modelo la suelte); comprobar respuesta (local y determinista si hay respuesta conocida, feedback del modelo si fallas, flags de salas externas se registran); XP por dificultad (−25 % por pista, mín. 25 %, evaluación ×2), rango, racha y árbol de herramientas (SCR-026). Laboratorio Linux (SCR-027): detecta WSL, VirtualBox y RAM; recomienda WSL2 o attack box y marca VirtualBox «pesado»; instalación solo con confirmación explícita + UAC (ST-040, auditado); «Abrir Linux del laboratorio» escribe `README_LAB.md` + `notas.md` en `%USERPROFILE%\FORJA-lab\NNN-lección` y abre `wsl --cd` en Windows Terminal (o el attack box en el navegador). **Copiloto** junto a la lección/terminal: siguiente paso, «Explícame esto» y dudas, con el contexto del lab y tus notas; no ejecuta nada. G-3 se aplica antes del modelo; el «alcance» son IPs privadas, *.htb/*.thm/localhost y lo que declaraste |
 | 5 Proyectos, plantillas, export, telemetría y pulido | ✅ **Proyectos** (SCR-011, desplegable SC1): nuevo proyecto con nombre + carpeta (sugerida en `Documentos\FORJA proyectos\<nombre>` o elegida con el selector nativo de la ventana), abrir carpeta, asociar el hilo; el modelo ve el nombre, la descripción y la lista de archivos del proyecto del hilo. **Guardar a archivo** (BTN-031) en cada bloque de código cerrado: sugiere la ruta que el modelo escribió antes del bloque (`src/main.py`), diálogo de confirmación con la ruta final, segunda confirmación para sobrescribir, auditado; el backend rechaza `..`, rutas absolutas, nombres reservados de Windows y enlaces/uniones que salgan de la carpeta. **Plantillas** (BTN-032): Python, Bash, PowerShell y Firmware base (FAP de Flipper Zero) en `backend/plantillas/*.md`; las tuyas en `%APPDATA%\FORJA\plantillas` mandan. **Exportar conversación** a Markdown (BTN-060, con el razonamiento plegado en `<details>`) en `Documentos\FORJA exportados\conversaciones`. **Ajustes** por pestañas (SA1): Modelos (registro, descargas, qué modelo usa cada modo, precarga), Nube, Apariencia (tema, 6 acentos, densidad, tipografía, plegar razonamiento, telemetría; vista previa en vivo), Rutas y Avanzado (umbrales + `lab.*`). **Telemetría en vivo** (doc 22): `⏱ tiempo · fase · tokens · tok/s · ~ETA · Detener` junto al compositor y **BTN-100** ver/plegar razonamiento (también Ctrl+.); al terminar queda el resumen (tiempo, tokens, cuánto pensó) en la línea y en el mensaje |
-| 6–7 | pendiente (empaquetado, etc.) |
+| 6 Personalización de interfaces | ✅ **Protocolo del doc 13 ejecutado**: las 17 preguntas PREGUNTAR (G1–G5, S1–S3, SC1–SC2, SG1–SG3, ST1–ST2, SE1, SA1), una clave `ui.*` por pregunta, con tus respuestas en la migración 010. Ajustes › **Interfaces**: una fila por pregunta, por pantalla; **se repinta al momento** (vista previa en vivo, Guardar persiste, Cerrar deshace) y se puede **re-pulir** cualquier pantalla sin tocar las demás. Todas las opciones de cada pregunta están implementadas: pestañas icono+texto/texto/icono · esfuerzo en segmentos o deslizador · modelo en tooltip o a la vista · proyectos desplegable o fijo a la izquierda · resaltado de código (nuevo, sin dependencias) acorde/siempre oscuro/alto contraste · gate a pantalla completa o **asistente por pasos** (Alcance → Reglas → Autorización) · hallazgos en tabla o tarjetas · plantilla de informe HackerOne/Bugcrowd/breve/**propia** (editable) · tareas en tablero o lista, con o sin minutos y carga · escalado modal+banner/siempre modal/siempre banner · Ajustes en pestañas o una página · tema claro/oscuro/**seguir el sistema** |
+| 7 | pendiente (empaquetado, etc.) |
 | 8 Estudio de Apariencia | pendiente (doc 20, al final) |
 
-Pruebas cubiertas (170): TST-001…006, 010…012, 020…023, 030…039, 032b, 040…048, 060…063, 070…072, 075…079, 100…102 (+ token, validación, CRUD).
+Pruebas cubiertas (182): TST-001…006, 010…012, 020…023, 030…039, 032b, 040…048, 060…063, 070…072, 075…079, 100…102 (+ token, validación, CRUD) y Rama 6 (`tests/test_rama6.py`: las preferencias `ui.*` persisten tras reiniciar, se re-pulen sin perder nada y **se aplican**, comprobado en Edge headless contra un servidor reiniciado; se salta si no hay Edge).
 La UI de la Rama 5 se recorrió además en Edge headless (CDP) con un Ollama falso lento: plantillas, nuevo proyecto,
 telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobrescribir, export, ajustes y cambio de tema/acento, sin errores de consola.
 
@@ -141,7 +142,33 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
   queda a mano. La instalación de WSL se lanza con `Start-Process -Verb RunAs`, así que Windows pide su propio OK
   además del de FORJA.
 
+- **Rama 6**: `GET /seguridad/plantillas-informe` (no está en el doc 07) da las plantillas de informe de serie a Ajustes › Interfaces. Claves extra: `ui.informe_estructura` (la plantilla propia de SG3, hasta 4000 caracteres) y `ui.protocolo_respondido` (fecha). Además de lo que pide SC2 se añade un resaltado de sintaxis mínimo (`ForjaMD.resaltar`): antes los bloques no tenían color, así que las tres opciones no se habrían distinguido. El panel de proyectos fijo se oculta por debajo de 720 px de ancho.
+
 ## Personalización aplicada (13-protocolo-personalizacion.md)
-G1 nombre FORJA · G2 dos temas: oscuro (negro + gris) y claro (gris claro + negro), con botón para cambiar ·
-G3 acento naranja forja · G4 densidad cómoda · G5 tipografía del sistema. S1–S3, SC1 y SE1 (modal para Nube, banner para "justo") con sus
-valores por defecto. Todo guardado en `settings` (`ui.*`).
+Protocolo respondido el 2026-11-22 (Rama 6). Guardado en `settings` (`ui.*`, migración 010); se cambia y se
+re-pule en **Ajustes › Apariencia** (globales) y **Ajustes › Interfaces** (por pantalla), sin reiniciar.
+
+| Pregunta | Clave | Tu elección |
+|---|---|---|
+| G1 nombre | `ui.nombre_app` | FORJA |
+| G2 tema | `ui.tema` | **claro** (también oscuro y *seguir el sistema*; el botón de la barra alterna) |
+| G3 acento | `ui.acento` | **violeta** |
+| G4 densidad | `ui.densidad` | **compacta** |
+| G5 tipografía | `ui.tipografia` | **monoespaciada** |
+| S1 pestañas de modo | `ui.pestanas` | icono + texto |
+| S2 esfuerzo | `ui.esfuerzo_control` | segmentos |
+| S3 modelo | `ui.mostrar_modelo` | tier, modelo real en tooltip |
+| SC1 proyectos | `ui.proyectos` | desplegable |
+| SC2 resaltado | `ui.codigo_tema` | **alto contraste** |
+| SG1 gate | `ui.gate` | **asistente por pasos** |
+| SG2 hallazgos | `ui.hallazgos` | tabla |
+| SG3 informe | `ui.informe_plantilla` | HackerOne (editable: «Propia» usa `ui.informe_estructura`) |
+| ST1 plan | `ui.tareas_vista` | tablero |
+| ST2 carga | `ui.tareas_carga` | sí (minutos y carga del día) |
+| SE1 escalado | `ui.aviso_escalado` | modal si Nube, banner si justo |
+| SA1 ajustes | `ui.ajustes` | pestañas |
+
+Lo FIJADO del doc 13 no depende de estas claves: los dos selectores siempre visibles, el gate obligatorio (en
+el asistente, «Entrar» solo aparece en el paso 3 y sigue exigiendo la declaración), la explicación del
+escalado y la decisión del usuario. La migración solo cambia una clave si seguía en su DEFAULT anterior, así
+que lo que ya hubieras retocado en Ajustes se respeta.

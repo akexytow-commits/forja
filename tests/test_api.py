@@ -20,8 +20,8 @@ def test_bbdd_creada_con_todas_las_tablas(client):
     assert {"settings", "conversations", "messages", "projects", "task_lists", "tasks", "engagements",
             "findings", "models", "audit_log", "schema_version"} <= tablas
     assert {"learning_paths", "learning_modules", "learning_sections", "learning_progress", "tool_catalog"} <= tablas
-    assert db.schema_version() == 9
-    assert db.get_setting("ui.tema") == "oscuro"
+    assert db.schema_version() == 10
+    assert db.get_setting("ui.tema") == "claro"      # respuesta G2 del Protocolo (migración 010)
 
 
 def test_token_obligatorio(client):

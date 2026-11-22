@@ -1,7 +1,7 @@
 /* FORJA — Modo Tareas (SCR-030 captura, SCR-031 plan por días). Rama 3.
    Patrones (17-patrones-planificador.md): P1 lenguaje natural con vista previa (Todoist), P2 fijar +
    reorganizar (Motion/Sunsama), P3 carga del día (Sunsama), P4 subtareas tipo outliner (Logseq).
-   ST1 = tablero por columnas; ST2 = minutos y carga del día visibles. */
+   ST1 = tablero por columnas; ST2 = minutos y carga del día visibles (Rama 6: ocultables con ui.tareas_carga; lista con ui.tareas_vista, en rama6.css). */
 (() => {
   "use strict";
 
@@ -193,8 +193,8 @@
     if (esPadre) {
       const hs = todasLasHojas(t.id, hijas);
       const hechas = hs.filter((h) => h.estado === "hecha").length;
-      meta.push(`<span class="tl-meta-i">${hechas}/${hs.length} · ${horas(hs.reduce((a, h) => a + minutos(h), 0))}</span>`);
-    } else meta.push(`<span class="tl-meta-i${t.estimacion_min ? "" : " estimada"}">${horas(minutos(t))}</span>`);
+      meta.push(`<span class="tl-meta-i">${hechas}/${hs.length}<span class="tl-meta-i min"> · ${horas(hs.reduce((a, h) => a + minutos(h), 0))}</span></span>`);
+    } else meta.push(`<span class="tl-meta-i min${t.estimacion_min ? "" : " estimada"}">${horas(minutos(t))}</span>`);
     if (atrasada) meta.push(`<span class="tl-atrasada">${F.esc(F.fmt("tareas.atrasada", { dia: fechaCorta(t.dia_asignado) }))}</span>`);
     if (columnaDe(t) === "mas" && t.dia_asignado) meta.push(`<span class="tl-meta-i">${F.esc(fechaCorta(t.dia_asignado))}</span>`);
     if (t.origen !== "usuario") meta.push(`<span class="tl-origen">${F.esc(F.t("tareas.origen." + t.origen))}</span>`);

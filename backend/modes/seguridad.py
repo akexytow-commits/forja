@@ -54,6 +54,33 @@ PLANTILLA_HACKERONE = """## Resumen
 ## Evidencia
 ## Mitigación recomendada"""
 
+# SG3 (doc 13): plantilla de informe elegida en Ajustes (ui.informe_plantilla). "personalizada" usa la
+# estructura que escribe el usuario (ui.informe_estructura); si está vacía, la de HackerOne.
+PLANTILLAS_INFORME = {
+    "hackerone": ("estilo HackerOne", PLANTILLA_HACKERONE),
+    "bugcrowd": ("estilo Bugcrowd", """## Título
+## Clasificación VRT
+## Descripción
+## Prueba de concepto (PoC)
+1. …
+## Impacto
+## Remediación"""),
+    "breve": ("breve", """## Resumen
+## Pasos para reproducir
+1. …
+## Impacto"""),
+}
+
+
+def plantilla_informe(db: DB) -> tuple[str, str]:
+    """(nombre, estructura Markdown) de la plantilla de informe configurada."""
+    elegida = db.get_setting("ui.informe_plantilla", "hackerone")
+    if elegida == "personalizada":
+        propia = (db.get_setting("ui.informe_estructura", "") or "").strip()
+        if propia:
+            return "personalizada", propia
+    return PLANTILLAS_INFORME.get(elegida, PLANTILLAS_INFORME["hackerone"])
+
 
 class SeguridadError(Exception):
     def __init__(self, status: int, codigo: str, mensaje: str, **extra: Any):
@@ -387,10 +414,11 @@ class Seguridad:
                   f"Evidencia validada por el investigador:\n{f['evidencia_usuario']}"]
         for i, enf in enumerate(enfoques, 1):
             partes.append(f"Enfoque/evidencia adicional {i}:\n{enf}")
+        nombre_pl, estructura = plantilla_informe(self.db)     # SG3: la plantilla elegida en Ajustes
         pedido = ("Redacta en español un informe de bug bounty presentable, uniendo TODAS las evidencias y enfoques "
                   "en un solo relato coherente (si hay varios caminos para llegar al mismo fallo, preséntalos como "
-                  "variantes de reproducción). Usa exactamente esta estructura de Markdown (estilo HackerOne):\n"
-                  f"{PLANTILLA_HACKERONE}\n"
+                  f"variantes de reproducción). Usa exactamente esta estructura de Markdown ({nombre_pl}):\n"
+                  f"{estructura}\n"
                   "Empieza con una línea '# <título claro>'. No inventes datos que no estén en la evidencia: si falta "
                   "algo, deja un marcador [COMPLETAR: …]. Nada de payloads destructivos. Responde solo con el informe."
                   "\n\n" + "\n\n".join(partes))

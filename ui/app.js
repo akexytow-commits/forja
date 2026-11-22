@@ -101,19 +101,27 @@
     }, 250);
   }
 
+  /* G2: "oscuro" | "claro" | "sistema" (sigue a Windows y cambia en vivo si cambias Windows). */
+  const oscuroSistema = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  let temaElegido = "oscuro";
   function aplicarTema(tema) {
-    const t2 = tema === "claro" ? "claro" : "oscuro";
+    temaElegido = ["claro", "oscuro", "sistema"].includes(tema) ? tema : "oscuro";
+    const t2 = temaElegido === "sistema" ? (oscuroSistema && !oscuroSistema.matches ? "claro" : "oscuro") : temaElegido;
     document.documentElement.dataset.theme = t2;
+    document.documentElement.dataset.temaElegido = temaElegido;
     $("#btn-tema use").setAttribute("href", t2 === "oscuro" ? "#i-sol" : "#i-luna");
   }
+  oscuroSistema?.addEventListener?.("change", () => { if (temaElegido === "sistema") aplicarTema("sistema"); });
 
-  /* BTN-063: acento, densidad y tipografía (ui.*). El estudio completo de apariencia es la Rama 8. */
+  /* BTN-063 + Rama 6: apariencia global (G2–G5) e interfaz por pantalla (doc 13), aplicadas en vivo. */
   function aplicarApariencia(a) {
     const r = document.documentElement;
     aplicarTema(a["ui.tema"]);
     r.dataset.acento = a["ui.acento"] || "naranja-forja";
     r.dataset.densidad = a["ui.densidad"] || "comoda";
     r.dataset.fuente = a["ui.tipografia"] || "sistema";
+    window.ForjaInterfaz?.aplicar(a);
+    if (st.listo) { pintarModos(); pintarSelector(); tabAjustes(st.ajTab || "modelos"); }
   }
   const ajuste = (k, def) => (window.ForjaApp.ajustes?.[k] ?? def);
 
@@ -204,12 +212,36 @@
       } else {
         const et = etiquetaPara(st.modo, tier);
         b.title = et ? `${t("tier." + tier)}: ${et}` : t("tier." + tier); // S3: tier + modelo real en tooltip
+        // S3 = "tier+modelo": el modelo real del tier elegido, también a la vista.
+        if (et && tier === st.tier && ajuste("ui.mostrar_modelo", "tier+tooltip") === "tier+modelo") {
+          b.innerHTML = `${esc(t("tier." + tier))}<small class="tier-modelo">${esc(et)}</small>`;
+        }
       }
       b.addEventListener("click", () => cambiarTier(tier));
       segT.append(b);
     }
     const segE = $("#seg-esfuerzo");
     segE.innerHTML = "";
+    const elegir = (e) => {
+      if (e === st.esfuerzo) return;
+      st.esfuerzo = e; pintarSelector(); guardarEstado(); actualizarLinea();
+      if (st.modo === "seguridad") cargarModeloActual();   // el esfuerzo puede cambiar de modelo (override)
+      window.ForjaTareas?.alCambiarSelector();
+      SEG()?.alCambiarSelector();
+    };
+    if (ajuste("ui.esfuerzo_control", "segmentos") === "deslizador") {
+      // S2 = deslizador: 3 posiciones (bajo · medio · extra) con su etiqueta.
+      segE.classList.add("deslizador");
+      const i = ESFUERZOS.indexOf(st.esfuerzo);
+      segE.innerHTML = `<input type="range" class="esf-rango" min="0" max="${ESFUERZOS.length - 1}" step="1" value="${i}" ` +
+        `aria-label="${esc(t("esfuerzo.titulo"))}" aria-valuetext="${esc(t("esfuerzo." + st.esfuerzo))}" title="${esc(t(`esfuerzo.${st.esfuerzo}.ayuda`))}">` +
+        `<span class="esf-etq">${esc(t("esfuerzo." + st.esfuerzo))}</span>`;
+      const r = segE.querySelector("input");
+      r.addEventListener("input", () => { segE.querySelector(".esf-etq").textContent = t("esfuerzo." + ESFUERZOS[r.value]); });
+      r.addEventListener("change", () => { elegir(ESFUERZOS[r.value]); segE.querySelector("input")?.focus(); });
+      return;
+    }
+    segE.classList.remove("deslizador");
     for (const e of ESFUERZOS) {
       const b = document.createElement("button");
       b.type = "button";
@@ -217,12 +249,7 @@
       b.setAttribute("aria-checked", String(e === st.esfuerzo));
       b.textContent = t("esfuerzo." + e);
       b.title = t(`esfuerzo.${e}.ayuda`);
-      b.addEventListener("click", () => {
-        st.esfuerzo = e; pintarSelector(); guardarEstado(); actualizarLinea();
-        if (st.modo === "seguridad") cargarModeloActual();   // el esfuerzo puede cambiar de modelo (override)
-        window.ForjaTareas?.alCambiarSelector();
-        SEG()?.alCambiarSelector();
-      });
+      b.addEventListener("click", () => elegir(e));
       segE.append(b);
     }
   }
@@ -721,16 +748,28 @@
     $("#scr-006").hidden = true;
   }
 
-  /* SE1: modal si se recomienda la Nube, banner no bloqueante si es JUSTO. */
+  /* SE1 (ui.aviso_escalado): "modal-nube+banner-justo" (DEFAULT) = modal si se recomienda la Nube y banner
+     no bloqueante si es JUSTO · "modal" = siempre modal · "banner" = siempre banner. Lo FIJADO no cambia:
+     siempre se explica el motivo y decides tú. */
   function mostrarSugerencia(sug, texto) {
     st.pendiente = { texto, sug };
-    if (sug.veredicto === "JUSTO") {
-      const enGrande = sug.tier === "grande";
-      $("#banner-txt").textContent = enGrande ? t("s006.justo_grande") : fmt("s006.justo", { tier: t("tier." + sug.tier) });
+    const modo = ajuste("ui.aviso_escalado", "modal-nube+banner-justo");
+    const justo = sug.veredicto === "JUSTO";
+    const enGrande = sug.tier === "grande";
+    if (justo ? modo !== "modal" : modo === "banner") {
+      $("#banner-txt").textContent = justo
+        ? (enGrande ? t("s006.justo_grande") : fmt("s006.justo", { tier: t("tier." + sug.tier) }))
+        : `${t("s006.titulo")}: ${sug.motivo}`;
       $("#bj-grande").hidden = enGrande;
+      const bn = $("#bj-nube");
+      bn.hidden = justo;
+      bn.textContent = sug.nube_activada ? t("s006.escalar") : t("s006.activar");
+      bn.dataset.accion = sug.nube_activada ? "escalar" : "ajustes";
+      $("#banner-justo").classList.toggle("nube", !justo);
       $("#banner-justo").hidden = false;
       return;
     }
+    $("#s006-grande").hidden = !justo || enGrande;          // JUSTO en modal: también se puede subir a Grande
     $("#s006-motivo").textContent = sug.motivo;
     const alerta = (c) => (sug.motivo_codigo === c ? " alerta" : "");
     $("#s006-datos").innerHTML =
@@ -801,8 +840,12 @@
 
   // ---------------------------------------------------------------- SCR-007 ajustes (SA1: pestañas)
   function tabAjustes(tab) {
+    const pagina = document.documentElement.dataset.ajustes === "pagina";   // SA1
     document.querySelectorAll("#aj-tabs [role=tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
-    document.querySelectorAll("#scr-007 .aj-panel").forEach((p) => { p.hidden = p.dataset.tab !== tab; });
+    document.querySelectorAll("#scr-007 .aj-panel").forEach((p) => {
+      p.hidden = !pagina && p.dataset.tab !== tab;
+      if (!p.dataset.titulo) p.dataset.titulo = $(`#aj-tabs [data-tab="${p.dataset.tab}"]`)?.textContent || "";
+    });
     st.ajTab = tab;
   }
   function segValor(id, v) {
@@ -811,7 +854,8 @@
   const segLeer = (id, def) => document.querySelector(`#${id} [aria-checked=true]`)?.dataset.v || def;
   /* Vista previa en vivo de la apariencia mientras eliges (se persiste al Guardar; Cerrar la deshace). */
   function previaApariencia() {
-    aplicarApariencia({ "ui.tema": segLeer("aj-tema", "oscuro"), "ui.acento": segLeer("aj-acento", "naranja-forja"),
+    aplicarApariencia({ ...window.ForjaApp.ajustes, ...(window.ForjaInterfaz?.leer() || {}),
+      "ui.tema": segLeer("aj-tema", "oscuro"), "ui.acento": segLeer("aj-acento", "naranja-forja"),
       "ui.densidad": segLeer("aj-densidad", "comoda"), "ui.tipografia": segLeer("aj-tipografia", "sistema") });
   }
 
@@ -876,6 +920,9 @@
     segValor("aj-razonamiento", ajustes["ui.razonamiento"] || "plegar");
     $("#aj-telemetria").checked = ajustes["ui.telemetria"] !== "0";
     $("#aj-nombre-app").value = ajustes["ui.nombre_app"] || "FORJA";
+    // Interfaces (Rama 6, doc 13): una fila por pregunta PREGUNTAR de cada pantalla
+    window.ForjaInterfaz.construir(previaApariencia);
+    await window.ForjaInterfaz.pintar(ajustes);
     // Rutas ('' = la de serie, que se enseña en gris)
     const rutas = await Promise.all([api("/proyectos").catch(() => ({})), api("/plantillas").catch(() => ({}))]);
     $("#aj-dir-proyectos").value = ajustes["proyectos.dir"] || "";
@@ -917,6 +964,7 @@
       "ui.razonamiento": segLeer("aj-razonamiento", "plegar"),
       "ui.telemetria": $("#aj-telemetria").checked ? "1" : "0",
       "ui.nombre_app": $("#aj-nombre-app").value.trim() || "FORJA",
+      ...window.ForjaInterfaz.leer(),
       "proyectos.dir": $("#aj-dir-proyectos").value.trim(),
       "export.dir": $("#aj-dir-export").value.trim(),
       "plantillas.dir": $("#aj-dir-plantillas").value.trim(),
@@ -1115,7 +1163,7 @@
     $("#btn-nuevo-hilo-2").addEventListener("click", nuevoHilo);
     $("#chip-estado").addEventListener("click", async () => { await refrescarSalud(); abrirS008(); });
     $("#btn-tema").addEventListener("click", () => {
-      const nuevo = document.documentElement.dataset.theme === "oscuro" ? "claro" : "oscuro";
+      const nuevo = document.documentElement.dataset.theme === "oscuro" ? "claro" : "oscuro";   // fija uno (deja "sistema")
       aplicarTema(nuevo);
       window.ForjaApp.ajustes["ui.tema"] = nuevo;
       api("/ajustes", { method: "PUT", body: { "ui.tema": nuevo } }).catch(() => {});
@@ -1131,6 +1179,8 @@
     $("#bj-trocear").addEventListener("click", () => decidir("trocear"));
     $("#bj-seguir").addEventListener("click", () => decidir("seguir"));
     $("#bj-cerrar").addEventListener("click", () => { st.pendiente = null; cerrarAvisos(); });
+    $("#bj-nube").addEventListener("click", (e) => decidir(e.currentTarget.dataset.accion));
+    $("#s006-grande").addEventListener("click", () => decidir("grande"));
     $("#s006-nube").addEventListener("click", (e) => decidir(e.currentTarget.dataset.accion));
     $("#s006-local").addEventListener("click", () => decidir("trocear"));
     $("#s006-igual").addEventListener("click", () => decidir("seguir"));
@@ -1205,6 +1255,7 @@
     st.override = m.override || {};
 
     pintarModos();
+    st.listo = true;              // a partir de aquí, aplicarApariencia repinta selectores al momento
     mostrarVista();
     actualizarCompositor();
     await refrescarSalud();

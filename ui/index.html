@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/ui/seguridad.css">
   <link rel="stylesheet" href="/ui/academia.css">
   <link rel="stylesheet" href="/ui/rama5.css">
+  <link rel="stylesheet" href="/ui/rama6.css">
   <script>window.FORJA_TOKEN = "__FORJA_TOKEN__";</script>
 </head>
 <body>
@@ -169,18 +170,28 @@
             <div class="sg-gate-grid">
               <form class="sg-gate-form" id="sg-gate-form" autocomplete="off">
                 <h3 id="sg-gate-h3"></h3>
-                <label><span data-t="seg.gate.nombre"></span><input id="sg-nombre" type="text" maxlength="120" data-t-ph="seg.gate.nombre_ph"></label>
-                <label><span data-t="seg.gate.alcance"></span>
+                <!-- SG1 = asistente: 1 Alcance → 2 Reglas → 3 Autorización (data-paso). Pantalla completa: todo a la vez. -->
+                <ol class="sg-pasos" id="sg-pasos" aria-label="Pasos">
+                  <li data-n="1"><span class="n">1</span><span data-t="seg.paso.1"></span></li>
+                  <li data-n="2"><span class="n">2</span><span data-t="seg.paso.2"></span></li>
+                  <li data-n="3"><span class="n">3</span><span data-t="seg.paso.3"></span></li>
+                </ol>
+                <label data-paso="1"><span data-t="seg.gate.nombre"></span><input id="sg-nombre" type="text" maxlength="120" data-t-ph="seg.gate.nombre_ph"></label>
+                <label data-paso="1"><span data-t="seg.gate.alcance"></span>
                   <textarea id="sg-alcance" rows="5" spellcheck="false" data-t-ph="seg.gate.alcance_ph"></textarea></label>
-                <div class="sg-chips" id="sg-alcance-previa"></div>
-                <label><span data-t="seg.gate.notas"></span><textarea id="sg-notas" rows="2" spellcheck="false" data-t-ph="seg.gate.notas_ph"></textarea></label>
-                <label class="sg-declaro"><input type="checkbox" id="sg-declaro"><span data-t="seg.gate.declaro"></span></label>
-                <ul class="sg-reglas">
+                <div class="sg-chips" id="sg-alcance-previa" data-paso="1"></div>
+                <label data-paso="1"><span data-t="seg.gate.notas"></span><textarea id="sg-notas" rows="2" spellcheck="false" data-t-ph="seg.gate.notas_ph"></textarea></label>
+                <p class="sg-paso-ayuda" data-paso="2" data-solo-asistente data-t="seg.paso.2.ayuda"></p>
+                <ul class="sg-reglas" data-paso="2">
                   <li data-t="seg.regla.1"></li><li data-t="seg.regla.2"></li><li data-t="seg.regla.3"></li><li data-t="seg.regla.4"></li>
                 </ul>
+                <div class="sg-resumen" id="sg-resumen" data-paso="3" data-solo-asistente></div>
+                <label class="sg-declaro" data-paso="3"><input type="checkbox" id="sg-declaro"><span data-t="seg.gate.declaro"></span></label>
                 <p class="sg-msg" id="sg-gate-msg" hidden></p>
                 <div class="sg-gate-acc">
                   <button class="boton-txt" type="button" id="sg-cancelar-ed" data-t="seg.gate.cancelar" hidden></button>
+                  <button class="boton-txt" type="button" id="sg-atras" data-t="seg.paso.atras" hidden></button>
+                  <button class="boton" type="button" id="sg-siguiente" data-t="seg.paso.siguiente" hidden></button>
                   <button class="boton" type="submit" id="sg-entrar"><svg><use href="#i-escudo"/></svg><span data-t="seg.gate.entrar"></span></button>
                 </div>
               </form>
@@ -315,6 +326,7 @@
       <div class="banner-justo" id="banner-justo" hidden>
         <span class="banner-txt" id="banner-txt"></span>
         <div class="banner-acciones">
+          <button class="boton" type="button" id="bj-nube" hidden></button>
           <button class="boton-txt" type="button" id="bj-grande" data-t="s006.subir_grande"></button>
           <button class="boton-txt" type="button" id="bj-trocear" data-t="s006.trocear"></button>
           <button class="boton" type="button" id="bj-seguir" data-t="s006.seguir"></button>
@@ -389,6 +401,7 @@
       <div class="s008-pie">
         <button class="boton-txt" type="button" id="s006-igual" data-t="s006.seguir_igual"></button>
         <div class="acciones">
+          <button class="boton-txt" type="button" id="s006-grande" data-t="s006.subir_grande" hidden></button>
           <button class="boton-txt" type="button" id="s006-local" data-t="s006.local_troceado"></button>
           <button class="boton" type="button" id="s006-nube"></button>
         </div>
@@ -404,6 +417,7 @@
         <button type="button" role="tab" data-tab="modelos" data-t="s007.tab.modelos"></button>
         <button type="button" role="tab" data-tab="nube" data-t="s007.tab.nube"></button>
         <button type="button" role="tab" data-tab="apariencia" data-t="s007.tab.apariencia"></button>
+        <button type="button" role="tab" data-tab="interfaz" data-t="s007.tab.interfaz"></button>
         <button type="button" role="tab" data-tab="rutas" data-t="s007.tab.rutas"></button>
         <button type="button" role="tab" data-tab="avanzado" data-t="s007.tab.avanzado"></button>
       </nav>
@@ -457,6 +471,7 @@
           <div class="seg" id="aj-tema" role="radiogroup">
             <button type="button" role="radio" data-v="oscuro" data-t="s007.tema.oscuro"></button>
             <button type="button" role="radio" data-v="claro" data-t="s007.tema.claro"></button>
+            <button type="button" role="radio" data-v="sistema" data-t="s007.tema.sistema"></button>
           </div></div>
         <div class="campo"><span class="etq" data-t="s007.acento"></span>
           <div class="aj-acentos" id="aj-acento" role="radiogroup">
@@ -485,6 +500,11 @@
           </div></div>
         <label class="check"><input type="checkbox" id="aj-telemetria"><span data-t="s007.telemetria"></span></label>
         <div class="campo"><label for="aj-nombre-app" data-t="s007.nombre_app"></label><input id="aj-nombre-app" type="text" maxlength="40"></div>
+      </div>
+      <!-- Interfaces (Rama 6): las preguntas PREGUNTAR del doc 13 por pantalla; se generan en ui/interfaz.js -->
+      <div class="aj-panel" data-tab="interfaz" hidden>
+        <p class="nota" data-t="s007.interfaz.ayuda"></p>
+        <div id="aj-interfaz"></div>
       </div>
       <!-- Rutas: carpeta de proyectos, de exportación, de plantillas y del laboratorio -->
       <div class="aj-panel" data-tab="rutas" hidden>
@@ -568,6 +588,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <script src="/ui/markdown.js"></script>
+  <script src="/ui/interfaz.js"></script>
   <script src="/ui/proyectos.js"></script>
   <script src="/ui/tareas.js"></script>
   <script src="/ui/academia.js"></script>

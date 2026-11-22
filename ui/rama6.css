@@ -1,0 +1,166 @@
+/* ======================= Rama 6 — Personalización de interfaces (doc 13) =======================
+   Cada pregunta PREGUNTAR = un atributo data-* en <html> (ui/interfaz.js). Cambiarlo repinta al momento. */
+
+/* ---------- S1 pestañas de modo ---------- */
+:root[data-pestanas="texto"] .modo > svg:not(.candado) { display: none; }
+:root[data-pestanas="icono"] .modo > span { display: none; }
+:root[data-pestanas="icono"] .modo { padding: 0 12px; }
+:root[data-pestanas="icono"] .modo > svg:not(.candado) { width: 20px; height: 20px; }
+
+/* ---------- S2 esfuerzo como deslizador ---------- */
+.seg.deslizador { align-items: center; gap: 10px; padding: 3px 12px 3px 10px; min-height: 40px; }
+.esf-rango { width: 120px; accent-color: var(--accent); cursor: pointer; margin: 0; }
+.esf-rango:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.esf-etq { min-width: 44px; font-size: 13.5px; font-weight: 600; color: var(--text-strong); }
+
+/* ---------- S3 modelo a la vista ---------- */
+.seg button .tier-modelo {
+  display: inline-block; margin-left: 6px; font: 11.5px var(--mono); font-weight: 500; opacity: .85;
+  max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: -2px;
+}
+
+/* ---------- SC1 panel de proyectos fijo ---------- */
+.proy-fijo {
+  flex: none; width: 290px; display: flex; flex-direction: column; min-height: 0;
+  background: var(--surface); border-right: 1px solid var(--line);
+}
+.proy-fijo .pop {
+  position: static; width: auto; max-height: none; flex: 1; overflow-y: auto;
+  border: 0; border-radius: 0; box-shadow: none; background: none; padding: 12px 10px;
+}
+:root[data-proyectos="fijo"] .chip-proy .flecha { display: none; }
+@media (max-width: 900px) { .proy-fijo { width: 230px; } }
+@media (max-width: 720px) { .proy-fijo { display: none; } }   /* en ventanas estrechas, cabe el chat */
+
+/* ---------- SC2 resaltado de código ---------- */
+:root {
+  --tk-k: var(--accent-hover); --tk-s: #a8cf86; --tk-n: #e3b46b; --tk-c: #80807b;
+  --code-lang: #9a9a96; --code-btn: #b5b5b0; --code-btn-hover: #fff; --code-btn-borde: #3a3a3e;
+}
+.code pre code .tk-k { color: var(--tk-k); font-weight: 600; }
+.code pre code .tk-s { color: var(--tk-s); }
+.code pre code .tk-n { color: var(--tk-n); }
+.code pre code .tk-c { color: var(--tk-c); font-style: italic; }
+.code-lang { color: var(--code-lang); }
+.code-copiar, .code-guardar { color: var(--code-btn); }
+.code-copiar:hover, .code-guardar:hover { color: var(--code-btn-hover); border-color: var(--code-btn-borde); }
+/* acorde + tema claro → bloques claros */
+:root[data-codigo="acorde"][data-theme="claro"] {
+  --code-bg: #f6f6f3; --code-text: #1b1b19; --code-head: #e6e6e2;
+  --tk-k: var(--accent); --tk-s: #2c7a34; --tk-n: #9a5500; --tk-c: #6f6f6a;
+  --code-lang: #5b5b58; --code-btn: #4a4a47; --code-btn-hover: #000; --code-btn-borde: #c2c2bd;
+}
+/* siempre oscuro (también con el tema claro) */
+:root[data-codigo="oscuro"] {
+  --code-bg: #0b0b0c; --code-text: #e2e2de; --code-head: #161618;
+}
+:root[data-codigo="oscuro"][data-theme="claro"] { --tk-k: #ff9a52; }
+/* alto contraste: negro puro, texto blanco, colores saturados, borde de acento */
+:root[data-codigo="alto-contraste"] {
+  --code-bg: #000; --code-text: #fff; --code-head: #111;
+  --tk-k: #5cc8ff; --tk-s: #7dff7a; --tk-n: #ffcf3f; --tk-c: #c9c9c9;
+  --code-lang: #fff; --code-btn: #fff; --code-btn-hover: #fff; --code-btn-borde: #fff;
+}
+:root[data-codigo="alto-contraste"] .code { border: 2px solid var(--accent); }
+:root[data-codigo="alto-contraste"] .code pre code { font-size: 13.5px; }
+:root[data-codigo="alto-contraste"] .code pre code .tk-c { font-style: normal; }
+
+/* ---------- SG1 gate como asistente ---------- */
+.sg-pasos { list-style: none; margin: 0 0 2px; padding: 0; display: flex; gap: 6px; counter-reset: paso; }
+.sg-pasos li {
+  flex: 1; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-peq);
+  border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: 13px; font-weight: 600;
+}
+.sg-pasos .n {
+  flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  border: 1.5px solid currentColor; font-size: 12px;
+}
+.sg-pasos li[aria-current="step"] { color: var(--text-strong); border-color: var(--accent-line); background: var(--accent-soft); }
+.sg-pasos li[aria-current="step"] .n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.sg-pasos li.hecho { color: var(--text); cursor: pointer; }
+.sg-pasos li.hecho .n { background: var(--surface-3); border-color: var(--surface-3); }
+.sg-pasos li.hecho:hover { border-color: var(--accent-line); }
+.sg-paso-ayuda { margin: 0; font-size: 13px; color: var(--muted); }
+.sg-resumen { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-peq); background: var(--bg); }
+.sg-resumen h4 { margin: 0 0 6px; font-size: 14px; color: var(--text-strong); }
+:root[data-gate="asistente"] .sg-gate-form .sg-reglas { font-size: 14px; line-height: 1.55; }
+@media (max-width: 560px) { .sg-pasos li { padding: 7px 8px; font-size: 12px; } }
+
+/* ---------- SG2 hallazgos como tarjetas ---------- */
+:root[data-hallazgos="tarjetas"] .sg-tabla { display: block; background: none; border: 0; border-radius: 0; overflow: visible; }
+:root[data-hallazgos="tarjetas"] .sg-tabla thead { display: none; }
+:root[data-hallazgos="tarjetas"] .sg-tabla tbody {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;
+}
+:root[data-hallazgos="tarjetas"] .sg-fila {
+  display: grid; grid-template-columns: auto 1fr; grid-template-areas: "sev est" "tit tit" "cla org";
+  gap: 6px 10px; align-items: center; padding: 12px; background: var(--surface);
+  border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: var(--r);
+}
+:root[data-hallazgos="tarjetas"] .sg-fila td { padding: 0; border: 0; background: none !important; }
+:root[data-hallazgos="tarjetas"] .sg-fila td:nth-child(1) { grid-area: sev; }
+:root[data-hallazgos="tarjetas"] .sg-fila td:nth-child(2) { grid-area: tit; font-size: 14.5px; font-weight: 650; color: var(--text-strong); }
+:root[data-hallazgos="tarjetas"] .sg-fila td:nth-child(3) { grid-area: cla; font-size: 12.5px; color: var(--muted); }
+:root[data-hallazgos="tarjetas"] .sg-fila td:nth-child(4) { grid-area: est; justify-self: end; }
+:root[data-hallazgos="tarjetas"] .sg-fila td:nth-child(5) { grid-area: org; justify-self: end; font-size: 12px; color: var(--muted); }
+:root[data-hallazgos="tarjetas"] .sg-fila:hover, :root[data-hallazgos="tarjetas"] .sg-fila.abierta { border-color: var(--accent-line); }
+:root[data-hallazgos="tarjetas"] .sg-fila.sev-critica { border-left-color: var(--bad); background: color-mix(in srgb, var(--bad) 8%, var(--surface)); }
+:root[data-hallazgos="tarjetas"] .sg-fila.sev-alta { border-left-color: var(--bad); }
+:root[data-hallazgos="tarjetas"] .sg-fila.sev-media { border-left-color: var(--warn); }
+:root[data-hallazgos="tarjetas"] .sg-fila.sev-baja { border-left-color: var(--ok); }
+:root[data-hallazgos="tarjetas"] .sg-fila .sg-sev { font-size: 12px; padding: 2px 9px; }
+:root[data-hallazgos="tarjetas"] .sg-detalle { display: block; grid-column: 1 / -1; }
+:root[data-hallazgos="tarjetas"] .sg-detalle > td { display: block; padding: 12px; border: 1px solid var(--accent-line); border-radius: var(--r); background: var(--surface); }
+
+/* ---------- ST1 plan como lista por secciones · ST2 sin minutos ni carga ---------- */
+:root[data-tareas-vista="lista"] .tl-tablero {
+  display: flex; flex-direction: column; gap: 12px; overflow-x: visible; overflow-y: auto; scroll-snap-type: none;
+  max-width: 920px; width: 100%; margin: 0 auto;
+}
+:root[data-tareas-vista="lista"] .tl-col { flex: none; border-top-width: 1px; }
+:root[data-tareas-vista="lista"] .tl-col[data-col="hoy"] { border-left: 3px solid var(--accent); }
+:root[data-tareas-vista="lista"] .tl-col-cab { display: grid; grid-template-columns: 1fr minmax(180px, 280px); align-items: center; gap: 4px 16px; }
+:root[data-tareas-vista="lista"] .tl-carga { margin-top: 0; }
+:root[data-tareas-vista="lista"] .tl-col-lista { overflow: visible; min-height: 44px; }
+@media (max-width: 720px) { :root[data-tareas-vista="lista"] .tl-col-cab { grid-template-columns: 1fr; } }
+:root[data-tareas-carga="0"] .tl-carga,
+:root[data-tareas-carga="0"] .tl-card .tl-meta-i.min,
+:root[data-tareas-carga="0"] .tl-cap { display: none; }
+
+/* ---------- SE1 banner con la Nube ---------- */
+.banner-justo.nube { border-color: var(--accent); }
+
+/* ---------- SA1 ajustes en una sola página ---------- */
+:root[data-ajustes="pagina"] #aj-tabs { display: none; }
+:root[data-ajustes="pagina"] #scr-007 .aj-panel { padding-top: 6px; }
+:root[data-ajustes="pagina"] #scr-007 .aj-panel + .aj-panel { margin-top: 10px; border-top: 1px solid var(--line); }
+:root[data-ajustes="pagina"] #scr-007 .aj-panel::before {
+  content: attr(data-titulo); display: block; margin: 10px 0 2px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+}
+
+/* ---------- Pestaña «Interfaces» de Ajustes ---------- */
+.aj-grupo { border: 1px solid var(--line); border-radius: var(--r); padding: 4px 14px 6px; margin: 0 0 12px; min-width: 0; }
+.aj-grupo legend { padding: 0 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.seg.seg-envuelve { flex-wrap: wrap; max-width: 100%; }
+.seg.seg-envuelve button { min-width: 0; }
+.aj-informe textarea {
+  width: 100%; resize: vertical; padding: 10px 12px; border-radius: var(--r-peq); border: 1px solid var(--line);
+  background: var(--bg); color: var(--text-strong); font: 13px/1.5 var(--mono);
+}
+.aj-informe textarea:focus { outline: none; border-color: var(--accent-line); }
+.aj-informe-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.aj-informe-previa {
+  margin: 0; padding: 8px 12px; border-radius: var(--r-peq); background: var(--bg); border: 1px dashed var(--line);
+  font: 12.5px/1.5 var(--mono); color: var(--text); white-space: pre-wrap;
+}
+
+/* SC1 fijo: en la columna, cada proyecto se apila (nombre y ruta arriba, acciones debajo). */
+.proy-fijo .pop-cab { flex-wrap: wrap; row-gap: 6px; }
+.proy-fijo .pop-cab .boton-txt { white-space: nowrap; }
+.proy-fijo .proy { flex-direction: column; align-items: stretch; gap: 8px; }
+.proy-fijo .proy-txt { min-width: 0; }
+.proy-fijo .proy-txt strong { overflow-wrap: anywhere; }
+.proy-fijo .proy-acc { justify-content: flex-end; }
+/* ST1 lista + ST2 sin carga: la cabecera ocupa todo el ancho (el contador, a la derecha). */
+:root[data-tareas-vista="lista"][data-tareas-carga="0"] .tl-col-cab { grid-template-columns: 1fr; }

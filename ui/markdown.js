@@ -38,6 +38,38 @@
     return out.join("");
   }
 
+  /* SC2 — resaltado mínimo de sintaxis (sin dependencias). Los colores salen de variables CSS --tk-*, que
+     cambian con ui.codigo_tema (acorde / oscuro / alto-contraste). Comentarios según el lenguaje. */
+  const HASH = /^(py|python|sh|bash|zsh|shell|ps1|powershell|pwsh|yaml|yml|toml|ini|conf|rb|ruby|perl|r|makefile|dockerfile|nmap)$/i;
+  const SLASH = /^(c|h|cpp|c\+\+|cc|hpp|cs|csharp|java|js|javascript|ts|typescript|jsx|tsx|go|rust|rs|kotlin|kt|swift|php|scala|dart|json5|fam)$/i;
+  const DASH = /^(sql|lua|haskell|hs)$/i;
+  const KW = new Set(("if else elif for while do return def class import from as with try except finally raise " +
+    "in not and or is None True False null true false function const let var new this self async await yield " +
+    "lambda pass break continue switch case default struct enum typedef static void int char float double long " +
+    "unsigned bool include define public private protected fn mut impl use pub package func go defer select " +
+    "echo then fi done esac local export param foreach begin end SELECT FROM WHERE INSERT UPDATE DELETE JOIN").split(" "));
+
+  function resaltar(codigo, lang) {
+    const l = (lang || "").toLowerCase();
+    const com = HASH.test(l) ? /#[^\n]*/ : SLASH.test(l) ? /\/\/[^\n]*|\/\*[\s\S]*?\*\// : DASH.test(l) ? /--[^\n]*/ : /(?!)/;
+    const str = /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`/;
+    const num = /\b0x[0-9a-fA-F]+\b|\b\d+(?:\.\d+)?\b/;
+    const id = /[A-Za-z_]\w*/;
+    const re = new RegExp([com, str, num, id].map((r) => `(${r.source})`).join("|"), "g");
+    let out = "", ultimo = 0, m;
+    while ((m = re.exec(codigo)) !== null) {
+      out += esc(codigo.slice(ultimo, m.index));
+      const [txt, c, str, num, id] = m;
+      if (c) out += `<span class="tk-c">${esc(txt)}</span>`;
+      else if (str) out += `<span class="tk-s">${esc(txt)}</span>`;
+      else if (num) out += `<span class="tk-n">${esc(txt)}</span>`;
+      else if (id && KW.has(id)) out += `<span class="tk-k">${esc(txt)}</span>`;
+      else out += esc(txt);
+      ultimo = re.lastIndex;
+    }
+    return out + esc(codigo.slice(ultimo));
+  }
+
   /* Nombre de archivo sugerido para un bloque: la ruta que el modelo pone justo antes (p. ej. `src/main.py`). */
   function nombreSugerido(previo) {
     const lineas = previo.replace(/\s+$/, "").split("\n");
@@ -64,7 +96,7 @@
       out.push(
         `<div class="code"><div class="code-head"><span class="code-lang">${esc(lang)}</span>` +
         `<span class="code-acc">${guardar}<button class="code-copiar" type="button">${esc(etiquetaCopiar)}</button></span></div>` +
-        `<pre><code>${esc(codigo)}</code></pre></div>`
+        `<pre><code>${resaltar(codigo, m[1])}</code></pre></div>`
       );
       ultimo = re.lastIndex;
       if (m[0].length === 0) break;
@@ -80,5 +112,5 @@
     return { plan: m[1].trim(), resto: src.slice(m[0].length).replace(/^\s+/, ""), planAbierto: m[2] !== "</plan>" };
   }
 
-  window.ForjaMD = { render, separarPlan, esc, nombreSugerido };
+  window.ForjaMD = { render, separarPlan, esc, nombreSugerido, resaltar };
 })();

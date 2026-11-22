@@ -58,15 +58,27 @@ CLAVES_NUBE = {"nube.activada", "nube.modelo", "nube.api_key", "nube.backend", "
 CLAVES_RUTA = {"proyectos.dir", "plantillas.dir", "export.dir"}
 CLAVES_CERRADAS = {
     "modelos.precargar": ("0", "1"),
-    "ui.tema": ("oscuro", "claro"),
+    "ui.tema": ("oscuro", "claro", "sistema"),
     "ui.densidad": ("comoda", "compacta"),
     "ui.tipografia": ("sistema", "mono", "serif"),
     "ui.acento": ("naranja-forja", "ambar", "verde", "azul", "violeta", "rojo"),
     "ui.razonamiento": ("plegar", "mostrar"),
     "ui.telemetria": ("0", "1"),
-    "ui.proyectos": ("desplegable", "fijo"),
-    "ui.ajustes": ("pestanas", "pagina"),
+    # Rama 6 — Protocolo de Personalización (doc 13): una clave por pregunta PREGUNTAR.
+    "ui.pestanas": ("icono+texto", "texto", "icono"),                       # S1
+    "ui.esfuerzo_control": ("segmentos", "deslizador"),                     # S2
+    "ui.mostrar_modelo": ("tier+tooltip", "tier+modelo"),                   # S3
+    "ui.proyectos": ("desplegable", "fijo"),                                # SC1
+    "ui.codigo_tema": ("acorde", "oscuro", "alto-contraste"),               # SC2
+    "ui.gate": ("pantalla_completa", "asistente"),                          # SG1
+    "ui.hallazgos": ("tabla", "tarjetas"),                                  # SG2
+    "ui.informe_plantilla": ("hackerone", "bugcrowd", "breve", "personalizada"),   # SG3
+    "ui.tareas_vista": ("tablero", "lista"),                                # ST1
+    "ui.tareas_carga": ("0", "1"),                                          # ST2
+    "ui.aviso_escalado": ("modal-nube+banner-justo", "modal", "banner"),    # SE1
+    "ui.ajustes": ("pestanas", "pagina"),                                   # SA1
 }
+MAX_INFORME_ESTRUCTURA = 4000   # SG3 "editable": estructura propia del informe (Markdown)
 
 
 class ApiError(Exception):
@@ -497,6 +509,15 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
             "nube.claude_bin_detectado": cloud_client.detectar_claude() or "",
         }}
 
+    @app.get("/seguridad/plantillas-informe")
+    async def plantillas_informe():
+        """SG3: plantillas de informe de serie (para elegir y para partir de una al personalizar)."""
+        from .modes.seguridad import PLANTILLAS_INFORME, plantilla_informe
+        nombre, estructura = plantilla_informe(db)
+        return {"plantillas": {k: {"nombre": n, "estructura": e} for k, (n, e) in PLANTILLAS_INFORME.items()},
+                "activa": {"id": db.get_setting("ui.informe_plantilla", "hackerone"), "nombre": nombre,
+                           "estructura": estructura}}
+
     @app.put("/ajustes")
     async def ajustes_guardar(cuerpo: dict[str, str]):
         for clave, valor in cuerpo.items():
@@ -531,6 +552,8 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
                 raise ApiError(400, "AJUSTE_INVALIDO", f"'{clave}' admite: {', '.join(CLAVES_CERRADAS[clave])}.")
             if clave in CLAVES_CERRADAS:
                 continue
+            if clave == "ui.informe_estructura" and len(valor) > MAX_INFORME_ESTRUCTURA:
+                raise ApiError(400, "AJUSTE_INVALIDO", f"La estructura del informe admite {MAX_INFORME_ESTRUCTURA} caracteres.")
             if clave not in CLAVES_NUBE and not clave.startswith(PREFIJOS_AJUSTES_EDITABLES):
                 raise ApiError(400, "AJUSTE_NO_EDITABLE", f"'{clave}' no se puede cambiar desde aquí.")
             if clave.startswith("umbral."):
