@@ -1,0 +1,129 @@
+/* FORJA — Rama 5: proyectos, plantillas, export, ajustes por pestañas, apariencia (ui.*) y telemetría. */
+
+/* ---------- BTN-063 acento (ui.acento) — mismos tokens que el naranja forja, en ambos temas ---------- */
+:root[data-acento="ambar"]   { --accent: #d9a21b; --accent-hover: #f0b630; --accent-ink: #170f00; --accent-soft: rgba(217, 162, 27, .14); --accent-line: rgba(217, 162, 27, .45); }
+:root[data-acento="verde"]   { --accent: #3fa45b; --accent-hover: #4fbe6c; --accent-ink: #04140a; --accent-soft: rgba(63, 164, 91, .14); --accent-line: rgba(63, 164, 91, .45); }
+:root[data-acento="azul"]    { --accent: #3d84e0; --accent-hover: #5598ef; --accent-ink: #ffffff; --accent-soft: rgba(61, 132, 224, .14); --accent-line: rgba(61, 132, 224, .45); }
+:root[data-acento="violeta"] { --accent: #8f64e0; --accent-hover: #a37ced; --accent-ink: #ffffff; --accent-soft: rgba(143, 100, 224, .14); --accent-line: rgba(143, 100, 224, .45); }
+:root[data-acento="rojo"]    { --accent: #d9483b; --accent-hover: #ec5d50; --accent-ink: #ffffff; --accent-soft: rgba(217, 72, 59, .14); --accent-line: rgba(217, 72, 59, .45); }
+/* En el tema claro, versiones más oscuras para que el texto de acento pase contraste sobre gris claro. */
+:root[data-theme="claro"][data-acento="ambar"]   { --accent: #946800; --accent-hover: #7a5600; --accent-ink: #ffffff; }
+:root[data-theme="claro"][data-acento="verde"]   { --accent: #237a3a; --accent-hover: #1b652f; --accent-ink: #ffffff; }
+:root[data-theme="claro"][data-acento="azul"]    { --accent: #1f63bd; --accent-hover: #18519c; }
+:root[data-theme="claro"][data-acento="violeta"] { --accent: #6a3fc0; --accent-hover: #5832a3; }
+:root[data-theme="claro"][data-acento="rojo"]    { --accent: #b0322a; --accent-hover: #922820; }
+
+/* ---------- densidad y tipografía ---------- */
+:root[data-densidad="compacta"] { --gap: 9px; --clic: 34px; --r: 8px; }
+:root[data-densidad="compacta"] body { font-size: 14px; }
+:root[data-densidad="compacta"] .msg { margin-bottom: 12px; }
+:root[data-fuente="mono"]  { --font: var(--mono); }
+:root[data-fuente="serif"] { --font: Cambria, "Georgia", "Times New Roman", serif; }
+
+/* ---------- barra del chat: proyecto, plantillas, exportar ---------- */
+.barra-acc { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.barra-acc + .boton-txt { margin-left: 0; }
+.pop-ancla { position: relative; }
+.pop-ancla[hidden] { display: none; }
+.chip-proy { max-width: 220px; gap: 6px; }
+.chip-proy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip-proy.con { border-color: var(--accent-line); color: var(--text-strong); }
+.chip-proy .flecha { width: 13px; height: 13px; opacity: .7; }
+.pop {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 8; width: min(380px, 86vw); max-height: 60vh; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 10px;
+}
+.pop-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 4px 8px; }
+.pop-cab strong { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+.pop-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pop-vacio { color: var(--muted); font-size: 13px; padding: 8px 6px; }
+.pop-nota { color: var(--muted); font-size: 12px; margin: 8px 4px 2px; }
+.pop-pie { margin-top: 8px; width: 100%; justify-content: center; }
+.proy { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); }
+.proy.activo { border-color: var(--accent-line); background: var(--accent-soft); }
+.proy-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.proy-txt strong { color: var(--text-strong); font-size: 14px; }
+.proy-ruta { font: 11.5px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proy-meta { font-size: 11.5px; color: var(--muted); }
+.proy-acc { display: flex; gap: 4px; flex: none; }
+.proy-acc .icono-btn svg { width: 16px; height: 16px; }
+.plant {
+  width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 9px 11px; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--r); color: var(--text); font: inherit;
+}
+.plant:hover, .plant:focus-visible { border-color: var(--accent-line); outline: none; }
+.plant strong { color: var(--text-strong); font-size: 14px; font-weight: 600; }
+.plant span { font-size: 12.5px; color: var(--muted); }
+#btn-exportar svg { width: 17px; height: 17px; }
+
+/* ---------- BTN-031 en los bloques de código ---------- */
+.code-acc { display: flex; gap: 2px; }
+.code-guardar {
+  background: none; border: 1px solid transparent; color: #b5b5b0; cursor: pointer; font-size: 12px; padding: 4px 10px; border-radius: 5px; min-height: 28px;
+}
+.code-guardar:hover { border-color: #3a3a3e; color: #fff; }
+.caja code.ruta { display: block; font: 12.5px var(--mono); color: var(--text-strong); word-break: break-all; }
+.boton.peligro { background: var(--bad); border-color: var(--bad); color: #fff; }
+.nota.aviso { color: var(--warn); }
+
+/* ---------- FR-077/078/079 línea de telemetría junto al compositor ---------- */
+.linea-estado.tel { color: var(--text); font-variant-numeric: tabular-nums; flex-wrap: wrap; row-gap: 4px; }
+.linea-estado .sep { color: var(--muted); opacity: .6; }
+.linea-estado .tel-t { color: var(--text-strong); font-weight: 600; min-width: 4.2em; }
+.linea-estado .tel-fase { color: var(--muted); }
+.linea-estado .tel-fase.f-pensando { color: var(--accent); }
+.linea-estado .tel-fase.f-respondiendo { color: var(--ok); }
+.linea-estado .tel-eta { color: var(--muted); font-style: italic; }
+.linea-estado .tel-fin { color: var(--muted); }
+.linea-estado button.tel-btn, .toast .tel-btn {
+  border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; text-decoration: none; color: var(--text); background: var(--bg);
+  font-size: 12px; cursor: pointer; min-height: 22px;
+}
+.linea-estado button.tel-btn:hover, .toast .tel-btn:hover { border-color: var(--accent-line); color: var(--text-strong); }
+.linea-estado button.tel-btn[data-accion="detener"] { color: var(--bad); }
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 128px; transform: translateX(-50%); z-index: 20; max-width: min(620px, calc(100vw - 32px));
+  background: var(--surface-2); color: var(--text-strong); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+  padding: 10px 14px; font-size: 13.5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.toast[hidden] { display: none; }
+.toast .mal { color: var(--bad); }
+
+/* ---------- SCR-007 por pestañas (SA1) ---------- */
+.panel-ancho { width: min(760px, 100%); }
+.aj-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 12px 0 14px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.aj-tabs::-webkit-scrollbar { display: none; }
+.aj-tabs button {
+  background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted); padding: 8px 12px; cursor: pointer;
+  font: 500 14px var(--font); white-space: nowrap; margin-bottom: -1px;
+}
+.aj-tabs button:hover { color: var(--text-strong); }
+.aj-tabs button[aria-selected="true"] { color: var(--text-strong); border-bottom-color: var(--accent); }
+.aj-panel { min-height: 260px; }
+.aj-panel[hidden] { display: none; }
+.campo .etq { font-size: 13px; color: var(--text-strong); font-weight: 500; }
+.campo .seg { align-self: flex-start; }
+.aj-acentos { display: flex; gap: 8px; flex-wrap: wrap; }
+.aj-acentos .sw {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--sw); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); cursor: pointer;
+}
+.aj-acentos .sw[aria-checked="true"] { box-shadow: 0 0 0 2px var(--text-strong); }
+.aj-familia { margin: 14px 0 6px; }
+.aj-familia h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+.aj-familia table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.aj-familia th, .aj-familia td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.aj-familia td { font-family: var(--mono); font-size: 12.5px; color: var(--text-strong); }
+.aj-familia th { color: var(--muted); font-weight: 500; }
+.panel input[type="text"]::placeholder { color: var(--muted); opacity: .8; }
+
+@media (max-width: 760px) {
+  .barra-acc { gap: 2px; }
+  .chip-proy span#btn-proyecto-txt { max-width: 90px; }
+  #btn-plantillas span { display: none; }
+  .toast { bottom: 150px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chispa { animation: none; }
+}

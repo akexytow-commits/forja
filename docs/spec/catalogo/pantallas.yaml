@@ -1,0 +1,127 @@
+# Catálogo de PANTALLAS (SCR) y transiciones. Fuente de verdad de la navegación.
+version: 0.1
+app:
+  nombre: FORJA            # PREGUNTAR G1 (personalizable)
+  idioma: es
+  selectores:
+    superior: { tipo: modo, siempre_visible: true, opciones: [scripts, seguridad, tareas] }   # BTN-010..012
+    inferior: { tipo: modelo_y_esfuerzo, siempre_visible: true,
+                tier: [pequeno, grande, nube], esfuerzo: [bajo, medio, extra] }                # BTN-020..025
+pantallas:
+  - id: SCR-001
+    nombre: Shell
+    modulo: MOD-001
+    descripcion: Layout maestro con selector de modo (arriba) y de modelo/esfuerzo (abajo) + compositor.
+    contiene_botones: [BTN-010, BTN-011, BTN-012, BTN-020, BTN-021, BTN-022, BTN-023, BTN-024, BTN-025, BTN-100]
+    transiciones:
+      - "pestaña scripts -> SCR-010"
+      - "pestaña seguridad -> (si no autorizado) SCR-020 | (si autorizado) SCR-021"
+      - "pestaña tareas -> SCR-030"
+
+  - id: SCR-002
+    nombre: Panel de modelo/esfuerzo
+    modulo: MOD-010
+    descripcion: El selector inferior; refleja tier/esfuerzo y si Nube está disponible.
+    contiene_botones: [BTN-020, BTN-021, BTN-022, BTN-023, BTN-024, BTN-025]
+
+  - id: SCR-006
+    nombre: Aviso de escalado a Nube
+    modulo: MOD-050
+    descripcion: Explica motivo, qué se enviaría y deja decidir al usuario.
+    contiene_botones: [BTN-026, BTN-027, BTN-028, BTN-029]
+
+  - id: SCR-007
+    nombre: Ajustes
+    modulo: MOD-070
+    descripcion: Modelos, Nube, apariencia, rutas, umbrales.
+    contiene_botones: [BTN-061, BTN-062, BTN-063, BTN-064]
+
+  - id: SCR-008
+    nombre: Estado del sistema / arranque
+    modulo: MOD-011
+    descripcion: Diagnóstico cuando Ollama está caído o falta un modelo.
+    contiene_botones: [BTN-070, BTN-071, BTN-072]
+
+  - id: SCR-010
+    nombre: Chat Scripts/Firmware
+    modulo: MOD-020
+    descripcion: Chat con streaming, bloques de código, plantillas.
+    contiene_botones: [BTN-030, BTN-031, BTN-032, BTN-033, BTN-060]
+
+  - id: SCR-011
+    nombre: Proyectos
+    modulo: MOD-020
+    descripcion: Proyectos locales (carpeta) y asociación de hilos.
+    contiene_botones: [BTN-034, BTN-035, BTN-036]
+
+  - id: SCR-020
+    nombre: Alcance y autorización (GATE)
+    modulo: MOD-030
+    descripcion: Declarar alcance y confirmar autorización. Bloquea el modo hasta completarse.
+    contiene_botones: [BTN-037, BTN-038, BTN-039]
+
+  - id: SCR-021
+    nombre: Análisis de reconocimiento
+    modulo: MOD-030
+    descripcion: Pegar/importar recon aportado por el usuario y analizarlo (crea findings).
+    contiene_botones: [BTN-041, BTN-042]
+
+  - id: SCR-022
+    nombre: Redactor de informe
+    modulo: MOD-030
+    descripcion: Unir enfoques/evidencias validados por el usuario en un informe exportable.
+    contiene_botones: [BTN-040, BTN-045]
+
+  - id: SCR-023
+    nombre: Hallazgos
+    modulo: MOD-030
+    descripcion: Lista de findings con estado; marcar validado, añadir manual.
+    contiene_botones: [BTN-043, BTN-044]
+
+  - id: SCR-024
+    nombre: Academia — enfoque y rutas
+    modulo: MOD-090
+    descripcion: Elegir enfoque (Ofensivo/Defensivo), explorar rutas por habilidad o por rol, declarar entorno de laboratorio autorizado y enrolarse.
+    contiene_botones: [BTN-080, BTN-081, BTN-082, BTN-087]
+
+  - id: SCR-025
+    nombre: Lección / sala guiada
+    modulo: MOD-090
+    descripcion: Teoría breve + ejercicio en laboratorio + pregunta verificada + pistas progresivas; marcar sección completada.
+    contiene_botones: [BTN-083, BTN-084, BTN-085, BTN-086, BTN-089]
+
+  - id: SCR-026
+    nombre: Progreso y árbol de herramientas
+    modulo: MOD-090
+    descripcion: XP, rango, racha, rutas completadas y el árbol de herramientas/habilidades que enseña cada ruta.
+    contiene_botones: [BTN-088]
+
+  - id: SCR-027
+    nombre: Laboratorio Linux
+    modulo: MOD-091
+    descripcion: Elegir el backend ACTIVO (WSL2 y attack box de serie; VirtualBox opcional), configurarlo/instalarlo con confirmación, y abrir el Linux con el contexto del ejercicio. Incluye el panel del Copiloto de Laboratorio (siguiente paso, explicar, dudas). El backend se puede cambiar aquí y por laboratorio.
+    contiene_botones: [BTN-089, BTN-090, BTN-091, BTN-092, BTN-093, BTN-094]
+
+  - id: SCR-040
+    nombre: Estudio de Apariencia
+    modulo: MOD-100
+    descripcion: "Módulo final: presets de tema, color/acento, tipografía, densidad, fondo/imagen y vista previa en vivo sobre una maqueta con los dos selectores."
+    contiene_botones: [BTN-095, BTN-096, BTN-097, BTN-098, BTN-099]
+
+  - id: SCR-030
+    nombre: Captura de tareas
+    modulo: MOD-040
+    descripcion: Escribir tareas en texto libre y organizarlas.
+    contiene_botones: [BTN-050, BTN-055, BTN-057]
+
+  - id: SCR-031
+    nombre: Plan por días
+    modulo: MOD-040
+    descripcion: Hoy/Mañana/Pasado/Más adelante/Sin asignar; editable y persistente.
+    contiene_botones: [BTN-051, BTN-052, BTN-053, BTN-054, BTN-056, BTN-058, BTN-059]
+
+  - id: SCR-032
+    nombre: Mapa de ideas
+    modulo: MOD-040
+    descripcion: "(Fase 2/opcional) Lienzo para capturar ideas como nodos, enlazarlas y convertirlas en tareas. Degrada a lista anidada en hardware limitado."
+    contiene_botones: [BTN-065, BTN-066]

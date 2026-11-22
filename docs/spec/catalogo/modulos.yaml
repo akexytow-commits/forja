@@ -1,0 +1,118 @@
+# Catálogo de MÓDULOS (las "cajitas"). Fuente de verdad de componentes y dependencias.
+# Cada módulo => un archivo/componente en backend/ o ui/. 'depende_de' dibuja las flechas del mapa.
+version: 0.1
+modulos:
+  - id: MOD-001
+    nombre: App Shell
+    capa: ui+backend
+    responsabilidad: Arranque, ventana, salud del sistema, enrutado de pantallas, estado global (modo/tier/esfuerzo).
+    depende_de: [MOD-013, MOD-070, MOD-011]
+    pantallas: [SCR-001, SCR-008]
+    requisitos: [FR-003, FR-010, NFR-020, ST-060]
+
+  - id: MOD-010
+    nombre: Router de Modelos
+    capa: backend
+    responsabilidad: Traduce (modo, tier, esfuerzo, tamaño) a modelo+parámetros (tabla determinista).
+    depende_de: [MOD-011, MOD-012]
+    requisitos: [FR-001, FR-002, FR-004, ADR-0004]
+
+  - id: MOD-011
+    nombre: Gestor de Ollama
+    capa: backend
+    responsabilidad: Comprobar salud, listar/descargar modelos, cargar/descargar (uno a la vez), keep_alive.
+    depende_de: []
+    pantallas: [SCR-008]
+    requisitos: [FR-005, NFR-002, NFR-020, ST-020]
+
+  - id: MOD-012
+    nombre: Cliente Nube
+    capa: backend
+    responsabilidad: Tier Nube = tu suscripción de Claude vía Claude Code headless (ADR-0006). SOLO si está activada; re-emite por SSE; registra el envío.
+    depende_de: [MOD-080]
+    requisitos: [FR-006, FR-051, NFR-010, ST-050]
+
+  - id: MOD-013
+    nombre: Motor de Chat
+    capa: backend
+    responsabilidad: Bucle de conversación, streaming SSE, tool-calling con confirmación. Emite telemetría en vivo (tiempo, tokens, tok/s, ETA, fase pensando/respondiendo) estilo Claude Code (doc 22).
+    depende_de: [MOD-010, MOD-050, MOD-060]
+    requisitos: [NFR-001, ST-010, ST-040, FR-077, FR-078, FR-079]
+
+  - id: MOD-020
+    nombre: Modo Scripts/Firmware
+    capa: backend+ui
+    responsabilidad: Perfil de código, herramientas (guardar archivo), proyectos, plantillas.
+    depende_de: [MOD-013, MOD-050, MOD-060]
+    pantallas: [SCR-010, SCR-011]
+    requisitos: [FR-020, FR-021, FR-022, FR-023, FR-024]
+
+  - id: MOD-030
+    nombre: Modo Seguridad
+    capa: backend+ui
+    responsabilidad: Gate de alcance/autorización, análisis de recon aportado, hallazgos, informes. Guardarraíles como código.
+    depende_de: [MOD-013, MOD-060, MOD-080]
+    pantallas: [SCR-020, SCR-021, SCR-022, SCR-023]
+    requisitos: [FR-030, FR-031, FR-032, FR-033, FR-034, NFR-030, ST-030, ADR-0005]
+
+  - id: MOD-040
+    nombre: Modo Organizador de Tareas
+    capa: backend+ui
+    responsabilidad: Captura de tareas, planificación con IA, plan por días editable y persistente.
+    depende_de: [MOD-013, MOD-060, MOD-050]
+    pantallas: [SCR-030, SCR-031]
+    requisitos: [FR-040, FR-041, FR-042, FR-043, FR-044]
+
+  - id: MOD-050
+    nombre: Estimador de Escalado
+    capa: backend
+    responsabilidad: Calcular tamaño/complejidad de tarea y veredicto local/justo/nube; plan de troceo.
+    depende_de: [MOD-040]
+    pantallas: [SCR-006]
+    requisitos: [FR-050, FR-051, FR-052, ST-050]
+
+  - id: MOD-060
+    nombre: Persistencia
+    capa: backend
+    responsabilidad: Acceso a SQLite, migraciones, copias de seguridad del .db.
+    depende_de: []
+    requisitos: [FR-060, ADR-0003]
+
+  - id: MOD-070
+    nombre: Ajustes
+    capa: backend+ui
+    responsabilidad: Config, activación de Nube (keyring), tema, rutas, umbrales del estimador, registro de modelos.
+    depende_de: [MOD-060, MOD-011, MOD-012]
+    pantallas: [SCR-007]
+    requisitos: [FR-061, NFR-010]
+
+  - id: MOD-090
+    nombre: Academia de Seguridad
+    capa: backend+ui
+    responsabilidad: Tutor estilo HTB/TryHackMe (ingeniería inversa, doc 18). Enfoque ofensivo/defensivo, currículo Ruta→Módulo→Lección, pistas progresivas, XP/rangos y catálogo de herramientas. Práctica solo en laboratorios autorizados.
+    depende_de: [MOD-013, MOD-060, MOD-080]
+    pantallas: [SCR-024, SCR-025, SCR-026]
+    requisitos: [FR-035, FR-036, FR-037, FR-038, FR-039, NFR-030, ADR-0005]
+
+  - id: MOD-091
+    nombre: Laboratorio Linux
+    capa: backend+ui
+    responsabilidad: Abrir un Linux con el contexto del lab (doc 19) + Copiloto de Laboratorio (asistente en vivo que da el siguiente paso, resuelve dudas y explica comandos/salidas, usando la experticia en código/firmware). Autodetecta y recomienda backend (WSL2 / attack box / VirtualBox opcional); instalación con confirmación. Solo tras declarar laboratorio autorizado.
+    depende_de: [MOD-090, MOD-013, MOD-080]
+    pantallas: [SCR-027]
+    requisitos: [FR-070, FR-071, FR-072, FR-075, FR-076, NFR-030, ST-040]
+
+  - id: MOD-100
+    nombre: Estudio de Apariencia
+    capa: backend+ui
+    responsabilidad: Módulo final para la cara de la app (doc 20) - presets, color/acento con contraste, tipografía, densidad, fondo/imagen, vista previa en vivo. Persiste en ui.*.
+    depende_de: [MOD-070, MOD-060]
+    pantallas: [SCR-040]
+    requisitos: [FR-073]
+
+  - id: MOD-080
+    nombre: Auditoría
+    capa: backend
+    responsabilidad: Registrar acciones sensibles (alcance, escalados, confirmaciones, descargas, export).
+    depende_de: [MOD-060]
+    requisitos: [FR-063, NFR-030]
