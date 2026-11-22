@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any, AsyncIterator
 
 from .. import audit, cloud_client
@@ -25,7 +25,6 @@ from ..router import FAMILIA, cargar_prompt
 from . import guardarrailes
 from .laboratorio import Laboratorio, LabError
 from .lenguaje import sin_tildes
-from .tareas import parsear_json_tolerante
 
 ENFOQUES = ("ofensivo", "defensivo")
 ENTORNOS = ("htb", "thm", "local", "ctf", "otro")
@@ -345,7 +344,7 @@ class Academia:
                 "pero NO des la respuesta final, ni la flag, ni un exploit listo para pegar."),
         }[nivel]
         pedido = (f"{self._ficha(s)}\n\nEl alumno pide la pista de nivel {nivel} ({NIVELES_PISTA[nivel]}).\n"
-                  + (f"Pistas ya dadas:\n" + "\n".join(f"- {p}" for p in previas) + "\n" if previas else "")
+                  + ("Pistas ya dadas:\n" + "\n".join(f"- {p}" for p in previas) + "\n" if previas else "")
                   + (f"Lo que dice el alumno: {duda}\n" if duda else "")
                   + instruccion + " No repitas las pistas anteriores. Responde solo con la pista.")
         texto = await self._completo(self._system(tier, esfuerzo, self._etiqueta(tier)), pedido, tier, esfuerzo,

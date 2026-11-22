@@ -1,5 +1,10 @@
 # 16 — Roadmap y Ramas de Trabajo (para Claude Code)
 
+> **ESTADO: COMPLETADO (2026-11-22).** Ramas 0–8 construidas, probadas con el modelo real y empaquetadas en
+> `FORJA.exe`. Extras entregados: Academia estilo HTB/THM (doc 18), Laboratorio Linux + Copiloto (doc 19),
+> Telemetría (doc 22), Verificador de código (doc 23), Política de restricciones (doc 21). Siguiente fase:
+> **usar la app** y recoger mejoras del uso real.
+
 Orden de construcción por **ramas**. Cada rama tiene una **Definición de Hecho (DoD)**: no se pasa a la
 siguiente sin cumplirla (pruebas incluidas). Construir en este orden da algo usable cuanto antes y evita
 dependencias rotas.

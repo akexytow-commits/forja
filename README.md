@@ -1,5 +1,7 @@
 # FORJA — IA local de escritorio
 
+> **Roadmap v1 COMPLETADO (2026-11-22):** Ramas 0–8 (+ 6b) construidas, probadas con el modelo real y empaquetadas en `FORJA.exe`. Guía para usarla: [GUIA_DE_USO.md](GUIA_DE_USO.md).
+
 Construida desde la especificación de `docs/spec/` (léela por el `README.md` de esa carpeta).
 
 ## Arrancar
@@ -21,7 +23,7 @@ uno libre solo).
 Requisito externo: **Ollama** (`winget install Ollama.Ollama`) y como mínimo el modelo `qwen2.5-coder:3b`.
 Si faltan, la propia app lo detecta y lo descarga desde la pantalla *Estado del sistema* (SCR-008).
 
-## Estado por ramas (16-roadmap-y-ramas.md)
+## Estado por ramas (16-roadmap-y-ramas.md) — ✅ completado
 | Rama | Estado |
 |---|---|
 | 0 Andamiaje y salud | ✅ FastAPI + `/salud`, SQLite con todas las tablas (001_init.sql), ventana pywebview |
@@ -69,7 +71,7 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
   (`~40 s`, `~2 min`). El evento lleva también `thinking_ms`; `messages` guarda `gen_ms` y `thinking_ms` (migración 008).
   En la Nube los tokens en vivo son aproximados (por caracteres).
 - **Apariencia** en Ajustes es la versión básica (presets cerrados); el estudio completo con contraste y fondos es la Rama 8.
-- **Spec rev (15)**: copiada a `docs/spec` (doc 23: aviso sobre «Corregir con la IA»). Rev. 14: doc 23 verificador, API-032, FR-080/081, TST-080…082, BTN-101/102, MOD-110). Antes, rev. 13 (doc 07: API-055). Doc 04 (rev. 12 recoge el prompt de medio implementado y los tiempos medidos): registro 2507, etiquetas reales, override de Seguridad, tope de razonamiento y mejora del prompt de medio. Doc 07: eventos `tope_razonamiento` y `reclasificar`. TST-032b.
+- **Spec rev (16)**: copiada a `docs/spec` (doc 16: roadmap COMPLETADO). Rev. 15: doc 23, aviso sobre «Corregir con la IA». Rev. 14: doc 23 verificador, API-032, FR-080/081, TST-080…082, BTN-101/102, MOD-110). Antes, rev. 13 (doc 07: API-055). Doc 04 (rev. 12 recoge el prompt de medio implementado y los tiempos medidos): registro 2507, etiquetas reales, override de Seguridad, tope de razonamiento y mejora del prompt de medio. Doc 07: eventos `tope_razonamiento` y `reclasificar`. TST-032b.
 - **Doc 21 (Política de Restricciones) aplicado** a `backend/prompts/scripts.txt`, `seguridad.txt` y `tareas.txt`
   (2026-11-22): tono de experto autorizado, directo, sin moralinas ni descargos; en Seguridad, la lista de lo permitido
   sobre objetivos en alcance (recon, fuzzing, prueba de credenciales si el programa lo permite, PoC mínima, Metasploit/
@@ -165,6 +167,12 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
   - **Colores en línea:** solo con colores propios (acento `#rrggbb`, colores base o acento por modo) se pone la paleta en línea; sin ellos mandan los temas afinados a mano en el CSS.
   - **Nombres de clave:** el doc 20 habla de `ui.fuente`; la clave es `ui.tipografia` (existe desde la Rama 5). Claves nuevas (migración 012, sin tocar tu tema): `ui.base`, `ui.fondo`, `ui.acento_por_modo`, `ui.animacion` y `ui.preset`.
   - **Imagen de fondo:** se guarda en `%APPDATA%\FORJA\fondos` (`POST /apariencia/fondo`, PNG/JPG/WebP/GIF de 8 MB como máximo; endpoints no listados en el doc 07). La UI la pide con el token y la usa como blob.
+
+- **Sincronía spec ↔ código (QA final, 2026-11-22)**: todos los endpoints del doc 07, de `catalogo/botones.yaml` y del doc 23 existen en el backend, salvo estos:
+  - `POST /academia/copiloto/explicar` y `…/siguiente` se sirven como `POST /academia/copiloto/{accion}`.
+  - **API-002b** `POST /chat/confirmar-herramienta` no existe porque no hay *tool-calling* genérico: la única herramienta, guardar archivo, pide su confirmación explícita (ST-040) en `POST /proyectos/{id}/guardar-archivo` (`confirmado`, y una segunda confirmación para sobrescribir). Seguridad no tiene herramientas activas (G-2).
+  - **SCR-032 Mapa de ideas** (BTN-065/066, `/idea_links`) no está construido: el catálogo lo marca como «Fase 2/opcional».
+  - Hay endpoints auxiliares que el doc 07 no lista: CRUD de listas, tareas, hallazgos y proyectos, `/trocear`, `/tareas/interpretar`, `/ollama/arrancar`, `/nube/probar`, `/sistema/elegir-carpeta`, los de plantillas, laboratorio y Academia, `/scripts/corregir` y `/scripts/verificar/*`, y `/apariencia/*`. Son de uso interno de la UI y van con el mismo token.
 
 ## Personalización aplicada (13-protocolo-personalizacion.md)
 Protocolo respondido el 2026-11-22 (Rama 6). Guardado en `settings` (`ui.*`, migración 010); se cambia y se
