@@ -11,11 +11,13 @@
   <link rel="stylesheet" href="/ui/rama5.css">
   <link rel="stylesheet" href="/ui/rama6.css">
   <link rel="stylesheet" href="/ui/verificador.css">
+  <link rel="stylesheet" href="/ui/estudio.css">
   <script>window.FORJA_TOKEN = "__FORJA_TOKEN__";</script>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <symbol id="i-yunque" viewBox="0 0 24 24"><path d="M3 7h13c0 2.8 2.2 4 5 4v1c-3 0-5 1.2-6 3l1 3H8l1-3C7.2 13.8 5 13 3 11z" fill="currentColor"/><path d="M6 21h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-paleta" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 2-2 0-1.4-1.2-1.7-1.2-2.9 0-1 .8-1.6 1.9-1.6H17a4 4 0 0 0 4-4C21 6.4 17 3 12 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="7.5" cy="11" r="1.4" fill="currentColor"/><circle cx="10" cy="7" r="1.4" fill="currentColor"/><circle cx="14.5" cy="7" r="1.4" fill="currentColor"/></symbol>
     <symbol id="i-codigo" viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-tareas" viewBox="0 0 24 24"><path d="M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17M11 6h9M11 12h9M11 18h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -50,6 +52,7 @@
           <span class="punto"></span><span class="chip-txt" id="chip-txt">…</span>
         </button>
         <button class="icono-btn" id="btn-ajustes" type="button"><svg><use href="#i-engranaje"/></svg></button>
+        <button class="icono-btn" id="btn-estudio" type="button"><svg><use href="#i-paleta"/></svg></button>
         <button class="icono-btn" id="btn-tema" type="button"><svg><use href="#i-luna"/></svg></button>
       </div>
     </header>
@@ -413,6 +416,9 @@
     </div>
   </div>
 
+  <!-- SCR-040 Estudio de Apariencia (Rama 8): lo construye ui/estudio.js -->
+  <div class="overlay estudio-overlay" id="scr-040" hidden></div>
+
   <!-- SCR-007 Ajustes (Rama 5 completa; SA1 = pestañas: Modelos / Nube / Apariencia / Rutas / Avanzado) -->
   <div class="overlay" id="scr-007" hidden>
     <div class="panel panel-ancho" role="dialog" aria-modal="true" aria-labelledby="s007-titulo">
@@ -471,32 +477,11 @@
       </div>
       <!-- BTN-063 Apariencia (ui.*) — el estudio completo es la Rama 8 -->
       <div class="aj-panel" data-tab="apariencia" hidden>
-        <div class="campo"><span class="etq" data-t="s007.tema"></span>
-          <div class="seg" id="aj-tema" role="radiogroup">
-            <button type="button" role="radio" data-v="oscuro" data-t="s007.tema.oscuro"></button>
-            <button type="button" role="radio" data-v="claro" data-t="s007.tema.claro"></button>
-            <button type="button" role="radio" data-v="sistema" data-t="s007.tema.sistema"></button>
-          </div></div>
-        <div class="campo"><span class="etq" data-t="s007.acento"></span>
-          <div class="aj-acentos" id="aj-acento" role="radiogroup">
-            <button type="button" role="radio" data-v="naranja-forja" class="sw" style="--sw:#e8701a"></button>
-            <button type="button" role="radio" data-v="ambar" class="sw" style="--sw:#d9a21b"></button>
-            <button type="button" role="radio" data-v="verde" class="sw" style="--sw:#3fa45b"></button>
-            <button type="button" role="radio" data-v="azul" class="sw" style="--sw:#3d84e0"></button>
-            <button type="button" role="radio" data-v="violeta" class="sw" style="--sw:#8f64e0"></button>
-            <button type="button" role="radio" data-v="rojo" class="sw" style="--sw:#d9483b"></button>
-          </div></div>
-        <div class="campo"><span class="etq" data-t="s007.densidad"></span>
-          <div class="seg" id="aj-densidad" role="radiogroup">
-            <button type="button" role="radio" data-v="comoda" data-t="s007.densidad.comoda"></button>
-            <button type="button" role="radio" data-v="compacta" data-t="s007.densidad.compacta"></button>
-          </div></div>
-        <div class="campo"><span class="etq" data-t="s007.tipografia"></span>
-          <div class="seg" id="aj-tipografia" role="radiogroup">
-            <button type="button" role="radio" data-v="sistema" data-t="s007.tipo.sistema"></button>
-            <button type="button" role="radio" data-v="mono" data-t="s007.tipo.mono"></button>
-            <button type="button" role="radio" data-v="serif" data-t="s007.tipo.serif"></button>
-          </div></div>
+        <!-- BTN-063 → SCR-040: tema, colores, tipografía, densidad y fondo viven en el Estudio de Apariencia (Rama 8) -->
+        <div class="aj-estudio">
+          <div><strong data-t="estudio.titulo"></strong><p class="nota" data-t="estudio.ajustes_ayuda"></p></div>
+          <button class="boton" type="button" id="aj-abrir-estudio"><svg><use href="#i-paleta"/></svg><span data-t="estudio.abrir"></span></button>
+        </div>
         <div class="campo"><span class="etq" data-t="s007.razonamiento"></span>
           <div class="seg" id="aj-razonamiento" role="radiogroup">
             <button type="button" role="radio" data-v="plegar" data-t="s007.razon.plegar"></button>
@@ -594,6 +579,7 @@
   <script src="/ui/markdown.js"></script>
   <script src="/ui/interfaz.js"></script>
   <script src="/ui/verificador.js"></script>
+  <script src="/ui/estudio.js"></script>
   <script src="/ui/proyectos.js"></script>
   <script src="/ui/tareas.js"></script>
   <script src="/ui/academia.js"></script>

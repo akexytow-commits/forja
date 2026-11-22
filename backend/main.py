@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import audit, cloud_client
-from . import verificador
+from . import apariencia, verificador
 from .modes import lenguaje
 from .modes import tareas as tareas_mod
 from .modes.tareas import Organizador, TareasError
@@ -59,10 +59,7 @@ CLAVES_NUBE = {"nube.activada", "nube.modelo", "nube.api_key", "nube.backend", "
 CLAVES_RUTA = {"proyectos.dir", "plantillas.dir", "export.dir"}
 CLAVES_CERRADAS = {
     "modelos.precargar": ("0", "1"),
-    "ui.tema": ("oscuro", "claro", "sistema"),
-    "ui.densidad": ("comoda", "compacta"),
-    "ui.tipografia": ("sistema", "mono", "serif"),
-    "ui.acento": ("naranja-forja", "ambar", "verde", "azul", "violeta", "rojo"),
+    # ui.tema, ui.acento, ui.densidad, ui.tipografia, ui.base, ui.fondo… → backend/apariencia.py (Rama 8).
     "ui.razonamiento": ("plegar", "mostrar"),
     "ui.telemetria": ("0", "1"),
     # Rama 6 — Protocolo de Personalización (doc 13): una clave por pregunta PREGUNTAR.
@@ -125,6 +122,12 @@ class ChatIn(BaseModel):
     adjuntos: list[Any] = []
     engagement_id: int | None = None
     forzar: bool = False  # el usuario ya decidió seguir pese al aviso del estimador
+
+
+class PreviaIn(BaseModel):
+    """Rama 8: estado ui.* a previsualizar (sin guardar) y el tema que ve el usuario si es «sistema»."""
+    estado: dict[str, Any] = Field(default_factory=dict)
+    tema_efectivo: str | None = None
 
 
 class VerificarIn(BaseModel):
@@ -580,9 +583,82 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
                 "activa": {"id": db.get_setting("ui.informe_plantilla", "hackerone"), "nombre": nombre,
                            "estructura": estructura}}
 
+    # --- Rama 8: Estudio de Apariencia (MOD-100, SCR-040) --------------------------------
+    @app.get("/apariencia")
+    async def apariencia_catalogo():
+        """Presets (BTN-095), acentos, fuentes y mínimos de contraste para el Estudio."""
+        return {"presets": apariencia.PRESETS,
+                "acentos": {k: v for k, v in apariencia.ACENTOS.items()},
+                "bases": apariencia.BASES, "fuentes": list(apariencia.FUENTES), "temas": list(apariencia.TEMAS),
+                "minimos": {"texto": apariencia.MIN_TEXTO, "secundario": apariencia.MIN_SECUNDARIO,
+                            "acento": apariencia.MIN_ACENTO},
+                "opacidad": {"min": apariencia.OPACIDAD_MIN, "max": apariencia.OPACIDAD_MAX}}
+
+    @app.post("/apariencia/previa")
+    async def apariencia_previa(cuerpo: PreviaIn):
+        """Paleta resultante + problemas de contraste de un estado ui.* sin guardarlo (vista previa en vivo)."""
+        estado = {**db.settings(), **cuerpo.estado}
+        try:
+            for k in list(estado):
+                if k in apariencia.CLAVES and k in cuerpo.estado:
+                    v = estado[k]
+                    estado[k] = apariencia.normalizar(k, v if isinstance(v, str) else json.dumps(v))
+        except apariencia.AparienciaError as e:
+            raise ApiError(400, e.codigo, e.mensaje)
+        return apariencia.paleta(estado, cuerpo.tema_efectivo)
+
+    def _dir_fondos() -> Path:
+        d = data_dir() / "fondos"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @app.post("/apariencia/fondo")
+    async def apariencia_fondo_subir(request: Request):
+        """BTN-098: guarda una imagen local de fondo (png/jpg/webp/gif ≤ 8 MB) en %APPDATA%\\FORJA\\fondos."""
+        import hashlib
+        datos = await request.body()
+        if len(datos) > apariencia.MAX_IMAGEN:
+            raise ApiError(400, "IMAGEN_GRANDE", "La imagen supera 8 MB.")
+        ext = apariencia.tipo_imagen(datos)
+        if not ext:
+            raise ApiError(400, "IMAGEN_INVALIDA", "Solo imágenes PNG, JPG, WebP o GIF.")
+        nombre = f"{hashlib.sha256(datos).hexdigest()[:16]}.{ext}"
+        (_dir_fondos() / nombre).write_bytes(datos)
+        return {"archivo": nombre, "bytes": len(datos)}
+
+    @app.get("/apariencia/fondo/{archivo}")
+    async def apariencia_fondo(archivo: str):
+        from fastapi.responses import FileResponse
+        import re as _re
+        if not _re.fullmatch(r"[0-9a-f]{16}\.(png|jpg|webp|gif)", archivo):
+            raise ApiError(404, "NO_ENCONTRADO", "No existe ese fondo.")
+        ruta = _dir_fondos() / archivo
+        if not ruta.is_file():
+            raise ApiError(404, "NO_ENCONTRADO", "No existe ese fondo.")
+        return FileResponse(ruta, headers={"Cache-Control": "no-store"})
+
     @app.put("/ajustes")
     async def ajustes_guardar(cuerpo: dict[str, str]):
+        # Rama 8: formato de las claves de apariencia y contraste del resultado (TST-073).
+        try:
+            for clave in [k for k in cuerpo if k in apariencia.CLAVES]:
+                cuerpo[clave] = apariencia.normalizar(clave, cuerpo[clave])
+            if any(k in cuerpo for k in ("ui.tema", "ui.acento", "ui.base", "ui.acento_por_modo")):
+                apariencia.validar_contraste({**db.settings(), **cuerpo})
+            if "ui.fondo" in cuerpo:
+                f = json.loads(cuerpo["ui.fondo"])
+                if f["tipo"] == "imagen" and not (_dir_fondos() / f["archivo"]).is_file():
+                    raise apariencia.AparienciaError("AJUSTE_INVALIDO", "Esa imagen de fondo ya no existe.")
+        except apariencia.AparienciaError as e:
+            r = _err(400, e.codigo, e.mensaje)
+            if e.problemas:
+                cuerpo_r = json.loads(r.body)
+                cuerpo_r["error"]["problemas"] = e.problemas
+                return JSONResponse(cuerpo_r, status_code=400)
+            return r
         for clave, valor in cuerpo.items():
+            if clave in apariencia.CLAVES:
+                continue
             if clave in CLAVES_ACADEMIA:
                 permitidos = CLAVES_ACADEMIA[clave]
                 if permitidos and valor not in permitidos:

@@ -100,7 +100,7 @@ def test_migracion_010_respeta_lo_ya_retocado(tmp_path, monkeypatch):
     db.set_setting("ui.hallazgos", "tarjetas")
     monkeypatch.setattr(dbmod, "MIGRATIONS_DIR", reales)
     db2 = DB(ruta)
-    assert db2.schema_version() == 11
+    assert db2.schema_version() == 12
     assert db2.get_setting("ui.acento") == "azul" and db2.get_setting("ui.hallazgos") == "tarjetas"
     assert db2.get_setting("ui.densidad") == "compacta"          # estaba en el DEFAULT → respuesta
     assert db2.get_setting("ui.informe_plantilla") == "hackerone"

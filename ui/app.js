@@ -104,14 +104,17 @@
   /* G2: "oscuro" | "claro" | "sistema" (sigue a Windows y cambia en vivo si cambias Windows). */
   const oscuroSistema = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   let temaElegido = "oscuro";
+  const temaSistema = () => (oscuroSistema && !oscuroSistema.matches ? "claro" : "oscuro");
   function aplicarTema(tema) {
-    temaElegido = ["claro", "oscuro", "sistema"].includes(tema) ? tema : "oscuro";
-    const t2 = temaElegido === "sistema" ? (oscuroSistema && !oscuroSistema.matches ? "claro" : "oscuro") : temaElegido;
+    temaElegido = ["claro", "oscuro", "sistema", "contraste"].includes(tema) ? tema : "oscuro";
+    const t2 = temaElegido === "sistema" ? temaSistema() : temaElegido;
     document.documentElement.dataset.theme = t2;
     document.documentElement.dataset.temaElegido = temaElegido;
     $("#btn-tema use").setAttribute("href", t2 === "oscuro" ? "#i-sol" : "#i-luna");
   }
-  oscuroSistema?.addEventListener?.("change", () => { if (temaElegido === "sistema") aplicarTema("sistema"); });
+  oscuroSistema?.addEventListener?.("change", () => {
+    if (temaElegido === "sistema") { aplicarTema("sistema"); aplicarPaleta(window.ForjaApp.ajustes); }
+  });
 
   /* BTN-063 + Rama 6: apariencia global (G2–G5) e interfaz por pantalla (doc 13), aplicadas en vivo. */
   function aplicarApariencia(a) {
@@ -120,10 +123,65 @@
     r.dataset.acento = a["ui.acento"] || "naranja-forja";
     r.dataset.densidad = a["ui.densidad"] || "comoda";
     r.dataset.fuente = a["ui.tipografia"] || "sistema";
+    r.dataset.animacion = a["ui.animacion"] === "0" ? "0" : "1";
+    aplicarFondo(a["ui.fondo"]);
+    aplicarPaleta(a);
     window.ForjaInterfaz?.aplicar(a);
     if (st.listo) { pintarModos(); pintarSelector(); tabAjustes(st.ajTab || "modelos"); }
   }
   const ajuste = (k, def) => (window.ForjaApp.ajustes?.[k] ?? def);
+
+  /* Rama 8 (MOD-100): colores propios. La paleta la calcula el backend (/apariencia/previa, un solo sitio para
+     colores y contraste) y se pone en línea sobre <html>; sin colores propios manda el CSS de cada tema. */
+  const PROPS_PALETA = ["--bg", "--surface", "--surface-2", "--surface-3", "--line", "--text", "--text-strong",
+    "--muted", "--accent", "--accent-hover", "--accent-ink", "--accent-soft", "--accent-line"];
+  const PROPS_ACENTO = PROPS_PALETA.filter((k) => k.startsWith("--accent"));
+  const leerJSON = (v, def) => { if (v && typeof v === "object") return v; try { return v ? JSON.parse(v) : def; } catch { return def; } };
+  let paletaActual = null, paletaSeq = 0;
+  const temaVisible = () => (temaElegido === "sistema" ? temaSistema() : temaElegido);
+
+  async function calcularPaleta(a) {
+    const estado = {};
+    for (const k of ["ui.tema", "ui.acento", "ui.base", "ui.acento_por_modo"]) if (a[k] !== undefined) estado[k] = a[k];
+    return api("/apariencia/previa", { method: "POST", body: { estado, tema_efectivo: temaVisible() } });
+  }
+  async function aplicarPaleta(a) {
+    const propios = !!a["ui.base"] || /^#/.test(a["ui.acento"] || "");
+    const porModo = Object.keys(leerJSON(a["ui.acento_por_modo"], {}) || {}).length > 0;
+    const seq = ++paletaSeq;
+    let p = null;
+    if (propios || porModo) { try { p = await calcularPaleta(a); } catch { p = null; } }
+    if (seq !== paletaSeq) return;                       // llegó una más reciente
+    paletaActual = p ? { ...p, propios } : null;
+    pintarPaleta();
+  }
+  /* Pone en línea la paleta propia y, encima, el acento del modo activo (opcional, doc 20). */
+  function pintarPaleta(el = document.documentElement, modo = st.modo, pal = paletaActual) {
+    for (const k of PROPS_PALETA) el.style.removeProperty(k);
+    if (el === document.documentElement && pal?.propios && temaElegido !== "contraste") el.dataset.theme = pal.familia;
+    else if (el === document.documentElement) aplicarTema(temaElegido);
+    if (!pal) return;
+    if (pal.propios) for (const [k, v] of Object.entries(pal.variables)) el.style.setProperty(k, v);
+    const acc = pal.por_modo?.[modo];
+    if (acc) for (const k of PROPS_ACENTO) el.style.setProperty(k, acc[k]);
+  }
+  /* BTN-098: liso · degradado · imagen local (pedida con el token y servida como blob: la ventana no la carga sola). */
+  const blobs = {};
+  async function aplicarFondo(valor) {
+    const f = leerJSON(valor, { tipo: "liso" }) || { tipo: "liso" };
+    const r = document.documentElement;
+    r.dataset.fondo = ["liso", "degradado", "imagen"].includes(f.tipo) ? f.tipo : "liso";
+    if (f.tipo !== "imagen" || !f.archivo) { r.style.removeProperty("--fondo-img"); return; }
+    r.style.setProperty("--fondo-op", String(f.opacidad ?? 0.2));
+    if (!blobs[f.archivo]) {
+      try {
+        const resp = await fetch(`/apariencia/fondo/${encodeURIComponent(f.archivo)}`, { headers: cabeceras() });
+        if (!resp.ok) throw new Error(resp.status);
+        blobs[f.archivo] = URL.createObjectURL(await resp.blob());
+      } catch { r.dataset.fondo = "liso"; return; }
+    }
+    r.style.setProperty("--fondo-img", `url("${blobs[f.archivo]}")`);
+  }
 
   // ---------------------------------------------------------------- utilidades
   function etiquetaPara(modo, tier, esfuerzo = st.esfuerzo) {
@@ -166,6 +224,7 @@
   function cambiarModo(modo) {
     if (modo === st.modo) return;
     st.modo = modo;
+    pintarPaleta();                 // acento por modo (Rama 8, opcional)
     pintarModos();
     mostrarVista();
     pintarSelector();
@@ -860,9 +919,7 @@
   const segLeer = (id, def) => document.querySelector(`#${id} [aria-checked=true]`)?.dataset.v || def;
   /* Vista previa en vivo de la apariencia mientras eliges (se persiste al Guardar; Cerrar la deshace). */
   function previaApariencia() {
-    aplicarApariencia({ ...window.ForjaApp.ajustes, ...(window.ForjaInterfaz?.leer() || {}),
-      "ui.tema": segLeer("aj-tema", "oscuro"), "ui.acento": segLeer("aj-acento", "naranja-forja"),
-      "ui.densidad": segLeer("aj-densidad", "comoda"), "ui.tipografia": segLeer("aj-tipografia", "sistema") });
+    aplicarApariencia({ ...window.ForjaApp.ajustes, ...(window.ForjaInterfaz?.leer() || {}) });
   }
 
   function pintarModelosAjustes() {
@@ -919,10 +976,6 @@
     $("#aj-precargar").checked = ajustes["modelos.precargar"] !== "0";
     pintarModelosAjustes();
     // Apariencia
-    segValor("aj-tema", ajustes["ui.tema"] || "oscuro");
-    segValor("aj-acento", ajustes["ui.acento"] || "naranja-forja");
-    segValor("aj-densidad", ajustes["ui.densidad"] || "comoda");
-    segValor("aj-tipografia", ajustes["ui.tipografia"] || "sistema");
     segValor("aj-razonamiento", ajustes["ui.razonamiento"] || "plegar");
     $("#aj-telemetria").checked = ajustes["ui.telemetria"] !== "0";
     $("#aj-nombre-app").value = ajustes["ui.nombre_app"] || "FORJA";
@@ -963,10 +1016,6 @@
       "umbral.complejidad_nube": String($("#aj-u-nube").value),
       "umbral.factor_salida": String($("#aj-u-salida").value),
       "modelos.precargar": $("#aj-precargar").checked ? "1" : "0",
-      "ui.tema": segLeer("aj-tema", "oscuro"),
-      "ui.acento": segLeer("aj-acento", "naranja-forja"),
-      "ui.densidad": segLeer("aj-densidad", "comoda"),
-      "ui.tipografia": segLeer("aj-tipografia", "sistema"),
       "ui.razonamiento": segLeer("aj-razonamiento", "plegar"),
       "ui.telemetria": $("#aj-telemetria").checked ? "1" : "0",
       "ui.nombre_app": $("#aj-nombre-app").value.trim() || "FORJA",
@@ -1148,6 +1197,8 @@
   function textosEstaticos() {
     document.querySelectorAll("[data-t]").forEach((n) => { n.textContent = t(n.dataset.t); });
     $("#btn-tema").title = t("tema.cambiar");
+    $("#btn-estudio").title = t("estudio.abrir");
+    $("#btn-estudio").setAttribute("aria-label", t("estudio.abrir"));
     $("#btn-tema").setAttribute("aria-label", t("tema.cambiar"));
     $("#btn-hilos").title = t("hilos.titulo");
     $("#btn-nuevo-hilo").title = t("hilos.nuevo");
@@ -1195,10 +1246,12 @@
     $("#aj-guardar").addEventListener("click", async () => { if (await guardarAjustes()) $("#scr-007").hidden = true; });
     $("#aj-cancelar").addEventListener("click", cerrarAjustes);
     document.querySelectorAll("#aj-tabs [role=tab]").forEach((b) => b.addEventListener("click", () => tabAjustes(b.dataset.tab)));
-    for (const id of ["aj-tema", "aj-acento", "aj-densidad", "aj-tipografia", "aj-razonamiento"]) {
+    for (const id of ["aj-razonamiento"]) {
       document.querySelectorAll(`#${id} [data-v]`).forEach((b) => b.addEventListener("click", () => { segValor(id, b.dataset.v); previaApariencia(); }));
     }
-    document.querySelectorAll("#aj-acento [data-v]").forEach((b) => { b.title = b.dataset.v.replace("-", " "); b.setAttribute("aria-label", b.title); });
+    // BTN-063: Apariencia abre el Estudio (SCR-040); también desde el icono de la barra.
+    $("#aj-abrir-estudio").addEventListener("click", () => { cerrarAjustes(); window.ForjaEstudio?.abrir(); });
+    $("#btn-estudio").addEventListener("click", () => window.ForjaEstudio?.abrir());
     $("#aj-borrar-clave").addEventListener("click", borrarClave);
     $("#aj-probar").addEventListener("click", probarNube);
     $("#aj-backend").addEventListener("change", pintarProveedor);
@@ -1243,6 +1296,8 @@
     colocarChat, actualizarCompositor, pintarVacio, cargarHilos: alEntrarModoChat,
     // Rama 5 (ui/proyectos.js)
     clave, hiloActual, recargarHilos: cargarHilos, entrada, autoAltura, abrirAjustes, alternarRazon,
+    // Rama 8 (ui/estudio.js)
+    aplicarApariencia, pintarPaleta, calcularPaleta, temaVisible, cerrarAjustes,
     // Rama 6b (ui/verificador.js)
     enviar, ocupado: () => !!st.gen,
   };
