@@ -33,6 +33,10 @@ Detecta **errores de sintaxis y fallos evidentes** (variables no cerradas, inden
 formadas). **No** detecta bugs de lógica — esos se cazan probando. Aun así, elimina la mayoría de los
 errores "tontos" que meten los modelos pequeños, que es justo lo que te molestaba.
 
+> **Aviso sobre "Corregir con la IA":** el código corregido se vuelve a comprobar y suele quedar bien, pero
+> la **explicación** que da el modelo puede ser **incorrecta** (un 4B puede describir mal el error, p. ej.
+> hablar de una "coma" que no existe). Fíate de **"Comprobar"** (determinista), no del texto del modelo.
+
 ## Contrato
 - Endpoint **API-032** `POST /scripts/verificar` `{lenguaje, codigo}` →
   `{ ok: bool, herramienta: str, errores: [{linea, columna?, mensaje, severidad}] }`.

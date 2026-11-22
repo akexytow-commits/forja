@@ -634,5 +634,6 @@
   "verif.instalar": "Instalar {nombre}…",
   "verif.instalar_conf": "Se abrirá «{comando}» en una ventana aparte. ¿Instalar {descripcion}?",
   "verif.cerrar": "Cerrar",
-  "verif.fallo": "No se pudo comprobar: {mensaje}"
+  "verif.fallo": "No se pudo comprobar: {mensaje}",
+  "verif.tras_corregir": "Comprobado de nuevo tras «Corregir con la IA». Fíate de este resultado, no de la explicación del modelo: un modelo pequeño puede describir mal el error que ha arreglado."
 }

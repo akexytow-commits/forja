@@ -25,3 +25,4 @@
 .verif-msg { overflow-wrap: anywhere; color: var(--text-strong); }
 .verif-nota { margin: 7px 0 0; font-size: 11.5px; color: var(--muted); }
 .verif-acc { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.verif-aviso-ia { color: var(--warn); }

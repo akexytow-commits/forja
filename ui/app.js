@@ -737,6 +737,7 @@
       }
       renderIA(el, s);
       if (cercaDelFinal(cont)) cont.scrollTop = cont.scrollHeight;
+      if (!s.error && !s.interrumpida) opts.alTerminar?.(el);    // p. ej. BTN-102: re-comprobar el bloque corregido
       actualizarLinea();
       guardarEstado();
       await cargarHilos();

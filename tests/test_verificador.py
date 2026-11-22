@@ -165,6 +165,13 @@ def test_ui_tiene_comprobar_y_corregir():
     html = (ROOT_DIR / "ui/index.html").read_text(encoding="utf-8")
     assert "code-comprobar" in md and "/scripts/verificar" in js and "/scripts/corregir" in js
     assert "/ui/verificador.js" in html and "/ui/verificador.css" in html
+    # Doc 23 rev. 15: tras «Corregir con la IA» el bloque nuevo se vuelve a comprobar solo, con el aviso de que
+    # la explicación del modelo puede ser errónea.
+    import json
+    textos = json.loads((ROOT_DIR / "ui/strings.es.json").read_text(encoding="utf-8"))
+    assert "alTerminar" in js and "trasCorregir: true" in js and "verif.tras_corregir" in js
+    assert "no de la explicación del modelo" in textos["verif.tras_corregir"]
+    assert "opts.alTerminar?.(el)" in (ROOT_DIR / "ui/app.js").read_text(encoding="utf-8")
     # Los alias del fence en la UI = los del backend (mismo conjunto de lenguajes verificables).
     import re
     ui = set(re.search(r"VERIFICABLES = new Set\(\[([^\]]+)\]", md)[1].replace("\n", "").replace('"', "").replace(" ", "").split(","))

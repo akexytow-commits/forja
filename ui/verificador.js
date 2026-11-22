@@ -12,7 +12,7 @@
 
   const codigoDe = (bloque) => bloque.querySelector("pre code").textContent;
 
-  async function comprobar(btn) {
+  async function comprobar(btn, extra = {}) {
     const bloque = btn.closest(".code");
     const lang = btn.dataset.lang || "";
     const codigo = codigoDe(bloque);
@@ -29,8 +29,10 @@
       btn.textContent = txt;
     }
     r.lang = lang;
+    Object.assign(r, extra);
     resultados.set(clave(lang, codigo), r);
-    pintar(bloque, r);
+    if (bloque.isConnected) pintar(bloque, r);
+    else reaplicar(document.querySelector("#mensajes"));     // el hilo se repintó mientras comprobaba
   }
 
   function pintar(bloque, r) {
@@ -68,6 +70,8 @@
           `<span class="verif-msg">${esc(e.mensaje)}</span></li>`).join("")}</ul>`;
       }
       cuerpo += `<p class="verif-nota">${esc(t("verif.nota"))}</p>`;
+      // Doc 23 (rev. 15): tras corregir, se vuelve a comprobar solo; la explicación del modelo puede ser errónea.
+      if (r.trasCorregir) cuerpo += `<p class="verif-nota verif-aviso-ia">${esc(t("verif.tras_corregir"))}</p>`;
       if (graves.length) {
         acciones += `<button type="button" class="boton peq verif-corregir" title="${esc(t("verif.corregir_ayuda"))}">${esc(t("verif.corregir"))}</button>`;
       }
@@ -100,6 +104,10 @@
       ruta: "/scripts/corregir",
       texto: app.fmt("verif.burbuja", { lenguaje: lang || "código", n: errores.length }),
       cuerpo: { lenguaje: lang, codigo, errores },
+      alTerminar: (el) => {             // el código corregido se vuelve a comprobar solo (doc 23)
+        const nuevo = el.querySelector(".code-comprobar");
+        if (nuevo) comprobar(nuevo, { trasCorregir: true });
+      },
     });
   }
 
