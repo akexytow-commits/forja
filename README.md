@@ -59,7 +59,7 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
   (`~40 s`, `~2 min`). El evento lleva también `thinking_ms`; `messages` guarda `gen_ms` y `thinking_ms` (migración 008).
   En la Nube los tokens en vivo son aproximados (por caracteres).
 - **Apariencia** en Ajustes es la versión básica (presets cerrados); el estudio completo con contraste y fondos es la Rama 8.
-- **Spec rev (10)**: copiada a `docs/spec` (doc 04: registro 2507, override de Seguridad y tope de razonamiento; TST-032b).
+- **Spec rev (11)**: copiada a `docs/spec`. Doc 04: registro 2507, etiquetas reales, override de Seguridad, tope de razonamiento y mejora del prompt de medio. Doc 07: eventos `tope_razonamiento` y `reclasificar`. TST-032b.
 - **Doc 21 (Política de Restricciones) aplicado** a `backend/prompts/scripts.txt`, `seguridad.txt` y `tareas.txt`
   (2026-11-22): tono de experto autorizado, directo, sin moralinas ni descargos; en Seguridad, la lista de lo permitido
   sobre objetivos en alcance (recon, fuzzing, prueba de credenciales si el programa lo permite, PoC mínima, Metasploit/
@@ -91,7 +91,9 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
     - **bajo** → modelo de **código** (`pequeno-codigo`/`grande-codigo`), `num_predict` 768: comandos y
       snippets directos (ffuf, nmap…).
     - **medio** → `pequeno-general` = **instruct**, `num_predict` 1536: análisis directo. En grande, qwen3:8b
-      (híbrido) va con thinking apagado + `/no_think`.
+      (híbrido) va con thinking apagado + `/no_think`. Doc 04 rev. 11: el prompt de medio exige empezar con
+      «**Clase:** …», el nombre estándar de la vulnerabilidad, **sin números** de CWE ni de OWASP
+      (`INSTRUCCION_SEGURIDAD_MEDIO`).
     - **extra** → `pequeno-razonador` = **thinking-2507**, `num_predict` 3072, con tope de razonamiento. El
       análisis de hallazgos (`/seguridad/.../analizar`) usa también el razonador en extra.
     - Si la BBDD no tiene `pequeno-razonador`, se usa `pequeno-general`.
@@ -107,13 +109,13 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
         razona, para que solo haya un modelo en RAM;
       - con un modelo híbrido, el mismo con thinking apagado + `/no_think`.
     - `fin.tokens_out` suma las dos llamadas.
-    - Desviación: `tope_razonamiento` no está en API-003; es informativo.
+    - El evento `tope_razonamiento` está en API-003 desde la rev. 11.
   - **Red de seguridad (B)** (`ollama_client.FiltroThink`). Con el thinking apagado o sin pedir, en cualquier modo:
     - lo que va entre `<think>` y `</think>` sale como `thinking`;
     - si llega un `</think>` cuando ya se mostraba como respuesta, se emite `reclasificar`: el Motor mueve ese
       texto al razonamiento y la UI lo pliega;
     - en las respuestas completas (`chat_completo`, JSON de Tareas/Seguridad) se descarta lo anterior al `</think>`.
-    - Desviación: `reclasificar` (SSE) es un evento nuevo.
+    - El evento SSE `reclasificar` está en API-003 desde la rev. 11.
   - La UI muestra en la línea de estado el modelo real según el esfuerzo (`/modelos` expone `override`).
   - Pruebas: TST-032b y el resto en `tests/test_router_seguridad.py`.
   - **Verificación con Ollama real**: 2026-11-22, portátil de 7,3 GB, solo CPU, mismo engagement de laboratorio.
@@ -124,6 +126,12 @@ telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobres
     - **extra** (thinking-2507 → instruct): el tope saltó a 1843 tokens de razonamiento. La respuesta del instruct
       **se completó** («IDOR… Impacto: Alto… Cómo verificar… Conclusión»; 3005 de 3072 tokens en total). En total
       **1072 s (~18 min)**, casi todo razonando. Antes (rev. 9), medio y extra se cortaban sin respuesta.
+    - **medio tras la mejora de la rev. 11** (pruebas sucesivas con la misma pregunta):
+      - con «clase + OWASP/CWE», empieza por «**Clase:** IDOR…», pero se inventa el número (CWE-601);
+      - con «el CWE solo si estás seguro», da CWE-602, también incorrecto;
+      - sin CWE, da OWASP «A03», incorrecto: es A01;
+      - con **solo el nombre** (versión final), sale «**Clase:** IDOR (Insecure Direct Object Reference)» en 224 s.
+      Medio ha bajado a **~4 min** (219–310 s) porque la respuesta es más concisa.
 - **Academia**: `learning_sections.tipo` admite también `evaluacion` (la evaluación de final de módulo de A3) y
   guarda `pregunta`/`respuesta_esperada` (alternativas con `|`; nunca viaja a la UI). La lección generada se guarda
   en `learning_progress.leccion_md`. Las flags de salas externas no se pueden verificar: se registran como

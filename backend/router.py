@@ -44,9 +44,19 @@ NUM_PREDICT_MIN_NO_THINK = 768
 #           (En grande, qwen3:8b sí es híbrido: thinking apagado + /no_think.)
 # - extra → pequeno-razonador = qwen3 THINKING-2507, 3072 (tabla base) + tope de razonamiento en el Motor de
 #           Chat; si el tope salta, la respuesta forzada la da el instruct (PlanDeModelo.etiqueta_respuesta).
+# Doc 04 rev. 11: el instruct, sin razonar, a veces describe el fallo sin nombrarlo (llamó «enumeración de
+# IDs» a un IDOR). En medio se le exige nombrar primero la clase de vulnerabilidad, SIN números de catálogo:
+# en la prueba real se los inventaba (CWE-601/602 y OWASP A03 para un IDOR) aun pidiéndole darlos solo si
+# estaba seguro.
+INSTRUCCION_SEGURIDAD_MEDIO = (
+    "Empieza SIEMPRE con una primera línea «**Clase:** …» que nombre la clase de vulnerabilidad por su nombre "
+    "estándar (p. ej. IDOR / Broken Object Level Authorization, XSS reflejado, SQLi, SSRF). Solo el nombre: no "
+    "pongas números de CWE ni de OWASP (A01, A03…), en este nivel tiendes a equivocarte de número. Después "
+    "explica qué es, el impacto, cómo verificarlo y cómo documentarlo.")
+
 OVERRIDE_ESFUERZO: dict[tuple[str, str], dict[str, Any]] = {
     ("seguridad", "bajo"): {"familia": {"pequeno": "pequeno-codigo", "grande": "grande-codigo"}, "num_predict": 768},
-    ("seguridad", "medio"): {"thinking": False, "num_predict": 1536},
+    ("seguridad", "medio"): {"thinking": False, "num_predict": 1536, "instruccion": INSTRUCCION_SEGURIDAD_MEDIO},
     ("seguridad", "extra"): {"familia": {"pequeno": "pequeno-razonador"}},
 }
 
@@ -208,6 +218,8 @@ def resolver(
     )
     if instruccion:
         system_prompt += "\n\n" + instruccion
+    if override and override.get("instruccion"):
+        system_prompt += "\n\n" + override["instruccion"]
 
     cargados = modelos_cargados or []
     return PlanDeModelo(

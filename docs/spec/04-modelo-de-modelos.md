@@ -97,6 +97,19 @@ Para modelos **con thinking** (familia Qwen3):
 > `qwen3:4b-instruct-2507`). El modelo que razona (`pequeno-razonador`) se reserva a esfuerzo extra.
 > `num_predict` debe presupuestar **pensamiento + respuesta** juntos cuando sí se razona; un valor bajo hace
 > que agote el presupuesto pensando y no responda.
+>
+> **Etiquetas reales (verificado en el equipo):** `qwen3:4b-instruct-2507` y `qwen3:4b-thinking-2507` **no
+> existen tal cual** en Ollama; las reales llevan **sufijo de cuantización** (p. ej. `...-q4_K_M`). Usa la
+> etiqueta exacta instalada. El thinking-2507 suele ser **el mismo archivo** que tu `qwen3:4b`.
+>
+> **Efecto colateral (correcto):** como Chat y Tareas del tier pequeño comparten `pequeno-general`, ahora
+> usan el **instruct**; en esfuerzo extra **ya no razonan de verdad**, el razonamiento se **simula con
+> instrucciones en el prompt** (como con los modelos de código). El `pequeno-razonador` se usa solo en
+> Seguridad extra.
+>
+> **Rendimiento real medido:** medio (instruct) ~5 min y análisis algo flojo (puede no nombrar la clase de
+> vulnerabilidad); extra ~18 min y análisis correcto. Mejora recomendada: en el prompt de Seguridad-medio,
+> exigir **nombrar la clase de vulnerabilidad primero** y luego explicar.
 
 Para modelos **sin thinking** (coder 3B/7B), el esfuerzo se emula:
 | esfuerzo | estrategia | temperatura | num_predict |

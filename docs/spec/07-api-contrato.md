@@ -34,6 +34,8 @@ tokens (la UI decide; ver SCR-006).
 | `herramienta` | {nombre, args, requiere_confirmacion} | el modelo quiere usar una tool (ver tool-calling) |
 | `sugerencia_escalado` | {motivo, resumen_envio} | el estimador propone Nube (SCR-006) |
 | `telemetria` | {fase, elapsed_ms, tokens_out, tok_s, eta_ms, modelo, tier} | tick cada ~400–600 ms para el indicador en vivo (FR-077/078, doc 22). `eta_ms` null = "estimando…" |
+| `tope_razonamiento` | {tokens_thinking, limite, num_predict, restante, modelo_respuesta} | el tope de razonamiento (doc 04) cortó el thinking; la respuesta final la dará `modelo_respuesta` (el instruct) |
+| `reclasificar` | {thinking} | red de seguridad B (doc 04): lo mostrado como respuesta era razonamiento (llegó un `</think>`); se mueve al panel de razonamiento |
 | `fin` | {tokens_in, tokens_out, mensaje_id, gen_ms} | terminó |
 | `error` | {codigo, mensaje} | fallo (p. ej. Ollama caído) |
 

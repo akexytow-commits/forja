@@ -13,7 +13,7 @@ import pytest
 from backend import estimator
 from backend.chat import MotorChat
 from backend.ollama_client import FiltroThink, quitar_razonamiento, sin_thinking
-from backend.router import resolver
+from backend.router import INSTRUCCION_SEGURIDAD_MEDIO, resolver
 
 from .conftest import INSTRUCT, RAZONADOR, eventos
 from .test_router import REGISTRO as REGISTRO_BASE
@@ -50,6 +50,10 @@ def test_seguridad_medio_instruct_y_extra_razonador_en_pequeno():
     medio = resolver("seguridad", "pequeno", "medio", 0, REGISTRO)
     assert medio.alias == "pequeno-general" and medio.etiqueta_ollama == INSTRUCT
     assert not medio.thinking_nativo and medio.params["num_predict"] == 1536
+    # Doc 04 rev. 11: medio nombra primero la clase de vulnerabilidad; los demás esfuerzos no llevan esa línea.
+    assert medio.system_prompt.endswith(INSTRUCCION_SEGURIDAD_MEDIO) and "«**Clase:** …»" in medio.system_prompt
+    assert INSTRUCCION_SEGURIDAD_MEDIO not in resolver("seguridad", "pequeno", "extra", 0, REGISTRO).system_prompt
+    assert INSTRUCCION_SEGURIDAD_MEDIO not in resolver("tareas", "pequeno", "medio", 0, REGISTRO).system_prompt
     extra = resolver("seguridad", "pequeno", "extra", 0, REGISTRO)
     assert extra.alias == "pequeno-razonador" and extra.etiqueta_ollama == RAZONADOR and extra.thinking_nativo
     assert extra.params["enable_thinking"] is True and extra.params["reasoning_effort"] == "high"
