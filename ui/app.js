@@ -591,7 +591,9 @@
       cuerpo.innerHTML = `<div class="espera"><span class="chispa"></span>${esc(msg)}</div>`;
     } else {
       // BTN-031 Guardar solo en Scripts/Firmware (y en bloques ya cerrados).
-      cuerpo.innerHTML = render(resto, t("code.copiar"), st.modo === "scripts" ? t("code.guardar") : null);
+      const scripts = st.modo === "scripts";
+      cuerpo.innerHTML = render(resto, t("code.copiar"), scripts ? t("code.guardar") : null, scripts ? t("verif.comprobar") : null);
+      if (scripts) window.ForjaVerif?.reaplicar(cuerpo);       // BTN-101: los resultados sobreviven al repintado
     }
     const pie = el.querySelector(".pie");
     pie.innerHTML = "";
@@ -631,6 +633,7 @@
     const ta = entrada();
     const texto = (opts.texto ?? ta.value).trim();
     if (!texto) return;
+    const ruta = opts.ruta || "/chat";            // BTN-102 usa /scripts/corregir (mismo streaming que /chat)
     const tier = opts.tier || st.tier;
     const forzar = !!opts.forzar;
     cerrarAvisos();
@@ -650,8 +653,7 @@
     st.telFin = null;
     renderIA(el, s);
     cont.scrollTop = cont.scrollHeight;
-    ta.value = "";
-    autoAltura();
+    if (!opts.ruta) { ta.value = ""; autoAltura(); }    // corregir no toca lo que estuvieras escribiendo
 
     const ctrl = new AbortController();
     st.gen = ctrl;
@@ -673,7 +675,10 @@
     let sugerencia = null;
     try {
       const engagement_id = st.modo === "seguridad" ? SEG()?.engagementId() : null;
-      await sse("/chat", { sesion_id: st.hilo[clave()] ?? null, modo: st.modo, tier, esfuerzo: st.esfuerzo, texto, forzar, engagement_id }, (ev, d) => {
+      const cuerpoPeticion = opts.ruta
+        ? { sesion_id: st.hilo[clave()] ?? null, tier, esfuerzo: st.esfuerzo, ...opts.cuerpo }
+        : { sesion_id: st.hilo[clave()] ?? null, modo: st.modo, tier, esfuerzo: st.esfuerzo, texto, forzar, engagement_id };
+      await sse(ruta, cuerpoPeticion, (ev, d) => {
         if (ev === "sugerencia_escalado") {
           sugerencia = d;
           return;
@@ -1208,6 +1213,12 @@
       if (acc) { await refrescarSalud(); abrirS008(); return; }
       if (e.target.closest("[data-accion='detener']")) { st.gen?.abort(); return; }
       if (e.target.closest("[data-accion='razon']")) { alternarRazon(); return; }
+      const comprobar = e.target.closest(".code-comprobar");
+      if (comprobar) { window.ForjaVerif?.comprobar(comprobar); return; }
+      const corregir = e.target.closest(".verif-corregir");
+      if (corregir) { window.ForjaVerif?.corregir(corregir); return; }
+      const instalar = e.target.closest(".verif-instalar");
+      if (instalar) { window.ForjaVerif?.instalar(instalar); return; }
       const guardar = e.target.closest(".code-guardar");
       if (guardar) { window.ForjaProyectos?.guardarBloque(guardar); return; }
       const copiar = e.target.closest(".code-copiar");
@@ -1231,6 +1242,8 @@
     colocarChat, actualizarCompositor, pintarVacio, cargarHilos: alEntrarModoChat,
     // Rama 5 (ui/proyectos.js)
     clave, hiloActual, recargarHilos: cargarHilos, entrada, autoAltura, abrirAjustes, alternarRazon,
+    // Rama 6b (ui/verificador.js)
+    enviar, ocupado: () => !!st.gen,
   };
 
   async function init() {

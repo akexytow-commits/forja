@@ -618,5 +618,21 @@
   "seg.paso.atras": "Atrás",
   "seg.paso.siguiente": "Siguiente",
   "seg.inf.plantilla": "Plantilla",
-  "seg.inf.plantilla_vacia": "Tu plantilla propia está vacía: se usará HackerOne. Escríbela en Ajustes › Interfaces."
+  "seg.inf.plantilla_vacia": "Tu plantilla propia está vacía: se usará HackerOne. Escríbela en Ajustes › Interfaces.",
+  "verif.comprobar": "Comprobar",
+  "verif.comprobando": "Comprobando…",
+  "verif.ok": "Sin errores · {herramienta}",
+  "verif.ok_avisos": "Sin errores de sintaxis · {n} aviso(s) · {herramienta}",
+  "verif.errores": "{n} error(es) · {herramienta}",
+  "verif.linea": "línea {n}",
+  "verif.sin_linea": "—",
+  "verif.nota": "Análisis estático: el código no se ejecuta. No detecta fallos de lógica: esos se cazan probando.",
+  "verif.corregir": "Corregir con la IA",
+  "verif.corregir_ayuda": "Manda el código y estos errores al modelo para una pasada de corrección (lento en CPU).",
+  "verif.ocupado": "Espera a que termine la respuesta en curso.",
+  "verif.burbuja": "Corrige el bloque de {lenguaje} ({n} error(es) del verificador).",
+  "verif.instalar": "Instalar {nombre}…",
+  "verif.instalar_conf": "Se abrirá «{comando}» en una ventana aparte. ¿Instalar {descripcion}?",
+  "verif.cerrar": "Cerrar",
+  "verif.fallo": "No se pudo comprobar: {mensaje}"
 }

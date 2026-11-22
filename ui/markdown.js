@@ -80,8 +80,13 @@
     return nombre;
   }
 
-  /* etiquetaGuardar (opcional): añade "Guardar" (BTN-031) a cada bloque ya cerrado. */
-  function render(src, etiquetaCopiar, etiquetaGuardar) {
+  /* Lenguajes con verificador (MOD-110, doc 23) = backend/verificador.py ALIAS. */
+  const VERIFICABLES = new Set(["python", "py", "python3", "py3", "powershell", "ps1", "pwsh", "ps", "posh",
+    "bash", "sh", "shell", "zsh", "javascript", "js", "node", "mjs", "cjs"]);
+
+  /* etiquetaGuardar (opcional): añade "Guardar" (BTN-031) a cada bloque ya cerrado.
+     etiquetaComprobar (opcional): añade "Comprobar" (BTN-101) si el lenguaje del fence tiene verificador. */
+  function render(src, etiquetaCopiar, etiquetaGuardar, etiquetaComprobar) {
     const out = [];
     const re = /```([\w+#.-]*)[^\n]*\n([\s\S]*?)(?:```|$)/g;
     let ultimo = 0, m;
@@ -93,9 +98,12 @@
       const guardar = etiquetaGuardar && cerrado
         ? `<button class="code-guardar" type="button" data-nombre="${esc(nombreSugerido(src.slice(0, m.index)))}" data-lang="${esc(m[1] || "")}">${esc(etiquetaGuardar)}</button>`
         : "";
+      const comprobar = etiquetaComprobar && cerrado && VERIFICABLES.has((m[1] || "").toLowerCase())
+        ? `<button class="code-comprobar" type="button" data-lang="${esc(m[1])}">${esc(etiquetaComprobar)}</button>`
+        : "";
       out.push(
         `<div class="code"><div class="code-head"><span class="code-lang">${esc(lang)}</span>` +
-        `<span class="code-acc">${guardar}<button class="code-copiar" type="button">${esc(etiquetaCopiar)}</button></span></div>` +
+        `<span class="code-acc">${comprobar}${guardar}<button class="code-copiar" type="button">${esc(etiquetaCopiar)}</button></span></div>` +
         `<pre><code>${resaltar(codigo, m[1])}</code></pre></div>`
       );
       ultimo = re.lastIndex;
@@ -112,5 +120,5 @@
     return { plan: m[1].trim(), resto: src.slice(m[0].length).replace(/^\s+/, ""), planAbierto: m[2] !== "</plan>" };
   }
 
-  window.ForjaMD = { render, separarPlan, esc, nombreSugerido, resaltar };
+  window.ForjaMD = { render, separarPlan, esc, nombreSugerido, resaltar, VERIFICABLES };
 })();

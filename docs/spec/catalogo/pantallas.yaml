@@ -46,7 +46,7 @@ pantallas:
     nombre: Chat Scripts/Firmware
     modulo: MOD-020
     descripcion: Chat con streaming, bloques de código, plantillas.
-    contiene_botones: [BTN-030, BTN-031, BTN-032, BTN-033, BTN-060]
+    contiene_botones: [BTN-030, BTN-031, BTN-032, BTN-033, BTN-060, BTN-101, BTN-102]
 
   - id: SCR-011
     nombre: Proyectos

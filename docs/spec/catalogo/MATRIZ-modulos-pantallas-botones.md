@@ -4,7 +4,7 @@
 > ingeniería: cada módulo, sus pantallas y **cada botón** con su acción, endpoint, estado y prueba.
 > No editar a mano; se regenera desde los catálogos.
 
-**Totales:** 15 módulos · 19 pantallas · 70 botones.
+**Totales:** 16 módulos · 19 pantallas · 72 botones.
 
 ## MOD-001 · App Shell  _(ui+backend)_
 Arranque, ventana, salud del sistema, enrutado de pantallas, estado global (modo/tier/esfuerzo).
@@ -85,6 +85,8 @@ Chat con streaming, bloques de código, plantillas.
 | BTN-032 | Plantillas | Insertar andamiaje (Python/Bash/PowerShell/Firmware base) en el compositor. | — | TST-022 |
 | BTN-033 | Nuevo hilo | Crear conversación nueva en modo scripts. | POST /conversaciones | TST-060 |
 | BTN-060 | Exportar conversación | Exportar la conversación actual a Markdown/archivo. | POST /export | TST-062 |
+| BTN-101 | Comprobar | Ejecuta el linter/compilador real del lenguaje del bloque (estático, NUNCA ejecuta el código) y muestra errores con línea. Degrada con aviso si falta la herramienta. | POST /scripts/verificar | TST-080 |
+| BTN-102 | Corregir con la IA | (Aparece si hay errores) Devuelve el código + los errores al modelo para una pasada de corrección. Opcional (lento en CPU). | POST /chat (corrección) | TST-082 |
 
 ### SCR-011 · Proyectos
 Proyectos locales (carpeta) y asociación de hilos.
@@ -253,6 +255,12 @@ Elegir el backend ACTIVO (WSL2 y attack box de serie; VirtualBox opcional), conf
 | BTN-092 | Cambiar backend activo | Selector para cambiar el backend de laboratorio activo (WSL2 / attack box / VirtualBox). Cambia settings.lab.backend al instante; también se puede elegir por laboratorio al abrir. | PUT /ajustes (lab.backend) | TST-071 |
 | BTN-093 | Siguiente paso | El copiloto propone el próximo paso según dónde estás y el contexto del lab (metodología, no exploit listo). Mantiene pistas progresivas. | POST /academia/copiloto/siguiente | TST-075 |
 | BTN-094 | Explícame esto | Pegas un comando, concepto o la salida del terminal y el copiloto lo explica y sugiere el siguiente paso. No ejecuta nada por su cuenta. | POST /academia/copiloto/explicar | TST-076 |
+
+## MOD-110 · Verificador de código  _(backend+ui)_
+Comprueba el código generado con linters/compiladores reales (doc 23), SOLO análisis estático, nunca ejecuta el código. Python/PowerShell siempre; Bash (WSL/Git-Bash) y JS (Node) si están. Opción 'Corregir con la IA' vía MOD-013.
+- **Depende de:** MOD-013
+- **Requisitos:** FR-080, FR-081, ST-040
+- _(sin pantallas propias)_
 
 ## MOD-100 · Estudio de Apariencia  _(backend+ui)_
 Módulo final para la cara de la app (doc 20) - presets, color/acento con contraste, tipografía, densidad, fondo/imagen, vista previa en vivo. Persiste en ui.*.

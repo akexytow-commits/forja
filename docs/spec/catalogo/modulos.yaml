@@ -102,6 +102,14 @@ modulos:
     pantallas: [SCR-027]
     requisitos: [FR-070, FR-071, FR-072, FR-075, FR-076, NFR-030, ST-040]
 
+  - id: MOD-110
+    nombre: Verificador de código
+    capa: backend+ui
+    responsabilidad: "Comprueba el código generado con linters/compiladores reales (doc 23), SOLO análisis estático, nunca ejecuta el código. Python/PowerShell siempre; Bash (WSL/Git-Bash) y JS (Node) si están. Opción 'Corregir con la IA' vía MOD-013."
+    depende_de: [MOD-013]
+    pantallas: [SCR-010]
+    requisitos: [FR-080, FR-081, ST-040]
+
   - id: MOD-100
     nombre: Estudio de Apariencia
     capa: backend+ui

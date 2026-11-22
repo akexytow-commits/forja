@@ -29,6 +29,13 @@ debe poder responder "¿qué satisface FR-012?" mirando los catálogos.
 - **FR-024** Si la petición es "grande" (p. ej. firmware completo), se activa el **estimador de escalado**
   y se sugiere Nube. → MOD-050
 
+### Verificador de código (MOD-110) · ver `23-...md`
+- **FR-080** Botón **"Comprobar"** en cada bloque de código (Scripts): ejecuta el linter/compilador **real**
+  del lenguaje (**análisis estático, nunca ejecuta el código**) y muestra errores con línea; detecta el
+  lenguaje del bloque; degrada con aviso si falta la herramienta. → BTN-101, API-032
+- **FR-081** **"Corregir con la IA"** (opcional): devuelve el código + los errores al modelo para una pasada
+  de corrección. → BTN-102
+
 ### Modo Seguridad / Bug Bounty (MOD-030)
 - **FR-030** Antes de usar el modo, el usuario declara el **alcance** (programa/objetivo) y **confirma
   autorización**. Sin ello, el modo permanece bloqueado. → ST-030, SCR-020

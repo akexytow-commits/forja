@@ -63,6 +63,10 @@ previos sin generar.
 ### API-030 `GET/POST /proyectos`, `PATCH/DELETE /proyectos/{id}` (DB-004).
 ### API-031 `POST /proyectos/{id}/guardar-archivo` `{ nombre, contenido }` → escribe en la carpeta del
 proyecto. **Requiere confirmación** si sobrescribe. Registra en auditoría si se desea.
+### API-032 `POST /scripts/verificar` `{ lenguaje, codigo }` → verificador de código (doc 23).
+Ejecuta el linter/compilador **estático** del lenguaje (**nunca ejecuta el código**). Respuesta:
+`{ ok, herramienta, errores: [{linea, columna?, mensaje, severidad}] }`. Si la herramienta no está
+instalada, `ok:false` con un mensaje claro y, si procede, oferta de instalar (ST-040).
 
 ## Tareas
 ### API-040 `GET /listas`, `POST /listas`.

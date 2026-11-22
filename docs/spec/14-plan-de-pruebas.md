@@ -59,6 +59,12 @@ añade.
   ejecutar nada por su cuenta. (FR-076)
 - **TST-074** FORJA abre como ventana de escritorio propia (sin navegador). (FR-074)
 
+## Verificador de código (MOD-110, doc 23)
+- **TST-080** "Comprobar" detecta un error de sintaxis en Python y lo reporta con su línea. (FR-080)
+- **TST-081** El verificador **no ejecuta** el código: un efecto secundario (p. ej. un `print`/escritura) no
+  ocurre al comprobar; usa análisis estático. (FR-080, seguridad)
+- **TST-082** "Corregir con la IA" devuelve una versión nueva del bloque a partir del código + errores. (FR-081)
+
 ## Telemetría de generación (MOD-013, doc 22)
 - **TST-077** La telemetría se actualiza en vivo durante la generación (tiempo, tokens, tok/s). (FR-077)
 - **TST-078** La ETA aparece, se afina con la velocidad real y nunca es negativa; muestra "estimando…"

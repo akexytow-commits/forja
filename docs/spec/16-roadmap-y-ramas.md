@@ -55,6 +55,13 @@ dependencias rotas.
   `settings` (`ui.*`), y retocar la estética según tus respuestas.
 - **DoD:** cada pantalla refleja tus decisiones; se puede re-pulir sin perder lo elegido.
 
+## Rama 6b — Verificador de código (MOD-110, doc 23)
+- Botón "Comprobar" en los bloques de código (SCR-010) que ejecuta linters/compiladores **estáticos**
+  (py_compile/ruff, parser PowerShell, `bash -n`/shellcheck, `node --check`), **sin ejecutar el código**;
+  detección de lenguaje y degradación si falta la herramienta. "Corregir con la IA" opcional (BTN-102).
+- **DoD:** Comprobar marca errores con línea en Python/PowerShell sin ejecutar nada; corrige opcionalmente.
+  TST-080..082.
+
 ## Rama 7 — Empaquetado
 - PyInstaller a `.exe`, detección de Ollama ausente, primer arranque limpio.
 - **DoD:** doble clic arranca; si falta Ollama/modelo, SCR-008 guía.

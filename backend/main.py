@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import audit, cloud_client
+from . import verificador
 from .modes import lenguaje
 from .modes import tareas as tareas_mod
 from .modes.tareas import Organizador, TareasError
@@ -124,6 +125,32 @@ class ChatIn(BaseModel):
     adjuntos: list[Any] = []
     engagement_id: int | None = None
     forzar: bool = False  # el usuario ya decidió seguir pese al aviso del estimador
+
+
+class VerificarIn(BaseModel):
+    lenguaje: str | None = Field(default=None, max_length=40)
+    codigo: str = Field(max_length=verificador.MAX_CODIGO)
+
+
+class InstalarVerifIn(BaseModel):
+    id: str = Field(max_length=40)
+    confirmado: bool = False
+
+
+class ErrorVerif(BaseModel):
+    linea: int | None = None
+    columna: int | None = None
+    mensaje: str = Field(default="", max_length=2000)
+    severidad: str = "error"
+
+
+class CorregirIn(BaseModel):
+    sesion_id: int | None = None
+    tier: Tier
+    esfuerzo: Esfuerzo
+    lenguaje: str | None = Field(default=None, max_length=40)
+    codigo: str = Field(max_length=verificador.MAX_CODIGO)
+    errores: list[ErrorVerif] = Field(default_factory=list, max_length=200)
 
 
 class EstimarIn(BaseModel):
@@ -385,6 +412,36 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
     async def chat(cuerpo: ChatIn):
         gen = motor.generar(cuerpo.sesion_id, cuerpo.modo, cuerpo.tier, cuerpo.esfuerzo, cuerpo.texto, cuerpo.forzar,
                             engagement_id=cuerpo.engagement_id)
+        return StreamingResponse(gen, media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    # --- API-032 verificador de código (MOD-110, doc 23) ------------------------------
+    @app.exception_handler(verificador.VerificadorError)
+    async def _verif_error(_: Request, e: verificador.VerificadorError):
+        return _err(e.status, e.codigo, e.mensaje)
+
+    @app.post("/scripts/verificar")
+    async def scripts_verificar(cuerpo: VerificarIn):
+        """Análisis ESTÁTICO del bloque (nunca lo ejecuta). ok:false + aviso si falta la herramienta."""
+        return await verificador.verificar(cuerpo.lenguaje, cuerpo.codigo)
+
+    @app.get("/scripts/verificar/herramientas")
+    async def scripts_verificar_herramientas():
+        return await asyncio.to_thread(verificador.herramientas)
+
+    @app.post("/scripts/verificar/instalar")
+    async def scripts_verificar_instalar(cuerpo: InstalarVerifIn):
+        """ST-040: sin confirmado devuelve la propuesta; con él, abre winget en una ventana aparte (auditado)."""
+        r = verificador.instalar(cuerpo.id, cuerpo.confirmado)
+        if cuerpo.confirmado:
+            audit.registrar(db, "verificador_instalar", {"id": cuerpo.id, "comando": r["comando"], "confirmado": True})
+        return r
+
+    @app.post("/scripts/corregir")
+    async def scripts_corregir(cuerpo: CorregirIn):
+        """BTN-102 «Corregir con la IA»: código + errores → Motor de Chat (mismo hilo, mismo streaming que /chat)."""
+        texto = verificador.prompt_correccion(cuerpo.lenguaje, cuerpo.codigo, [e.model_dump() for e in cuerpo.errores])
+        gen = motor.generar(cuerpo.sesion_id, "scripts", cuerpo.tier, cuerpo.esfuerzo, texto, True)
         return StreamingResponse(gen, media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 

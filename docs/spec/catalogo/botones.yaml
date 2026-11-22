@@ -524,6 +524,22 @@ botones:
     requisitos: [NFR-020, ST-060]
     prueba: TST-001
 
+  # --- Verificador de código (ver 23-verificador-codigo.md) ---
+  - id: BTN-101
+    pantalla: SCR-010
+    etiqueta: "Comprobar"
+    accion: "Ejecuta el linter/compilador real del lenguaje del bloque (estático, NUNCA ejecuta el código) y muestra errores con línea. Degrada con aviso si falta la herramienta."
+    endpoint: "POST /scripts/verificar"
+    requisitos: [FR-080]
+    prueba: TST-080
+  - id: BTN-102
+    pantalla: SCR-010
+    etiqueta: "Corregir con la IA"
+    accion: "(Aparece si hay errores) Devuelve el código + los errores al modelo para una pasada de corrección. Opcional (lento en CPU)."
+    endpoint: "POST /chat (corrección)"
+    requisitos: [FR-081]
+    prueba: TST-082
+
   # --- Telemetría de generación (ver 22-telemetria-generacion.md) ---
   - id: BTN-100
     pantalla: SCR-001
