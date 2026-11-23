@@ -27,23 +27,32 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import audit, cloud_client
-from . import apariencia, verificador
-from .modes import lenguaje
-from .modes import tareas as tareas_mod
-from .modes.tareas import Organizador, TareasError
-from .modes.seguridad import SeguridadError
-from .modes.academia import Academia, AcademiaError
-from .modes.laboratorio import BACKENDS as LAB_BACKENDS, Laboratorio, LabError
-from .modes import proyectos as proy_mod
-from .modes.proyectos import Plantillas, ProyectoError
+from . import apariencia, audit, cloud_client, verificador
+from .chat import MotorChat, sse
+from .chat import error as sse_error
 from .cloud_client import MODELOS_NUBE, ClienteNube, NubeError
-from .chat import MotorChat, error as sse_error, sse
-from .conocimiento import KBError
 from .config import HOST, OLLAMA_URL, PORT, TOKEN_HEADER, UI_DIR, data_dir
+from .conocimiento import KBError
 from .db import DB, ahora
-from .ollama_client import (ModeloFaltante, OllamaCaido, OllamaClient, OllamaError,
-                            arrancar_ollama, ejecutable_ollama, es_embeddings, normalizar)
+from .modes import lenguaje
+from .modes import proyectos as proy_mod
+from .modes import tareas as tareas_mod
+from .modes.academia import Academia, AcademiaError
+from .modes.laboratorio import BACKENDS as LAB_BACKENDS
+from .modes.laboratorio import LabError, Laboratorio
+from .modes.proyectos import Plantillas, ProyectoError
+from .modes.seguridad import SeguridadError
+from .modes.tareas import Organizador, TareasError
+from .ollama_client import (
+    ModeloFaltante,
+    OllamaCaido,
+    OllamaClient,
+    OllamaError,
+    arrancar_ollama,
+    ejecutable_ollama,
+    es_embeddings,
+    normalizar,
+)
 from .router import FAMILIA, OVERRIDE_ESFUERZO
 from .sistema import disco_libre_mb, ram_libre_mb
 
@@ -349,7 +358,7 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
             fila = db.one("SELECT etiqueta FROM models WHERE alias = ?", (FAMILIA[(modo, tier)],))
             if fila and normalizar(fila["etiqueta"]) in await ollama.instalados():
                 await ollama.cargar(fila["etiqueta"])
-        except Exception as e:  # nunca romper el arranque por la precarga
+        except Exception as e:  # noqa: BLE001 — nunca romper el arranque por la precarga
             log.info("Precarga omitida: %s", e)
 
     app = FastAPI(title="FORJA", version="0.1", lifespan=lifespan, docs_url=None, redoc_url=None)
@@ -505,9 +514,9 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
         try:
             return await motor.kb.buscar(kb_id, cuerpo.query, cuerpo.k)
         except ModeloFaltante as e:
-            raise ApiError(409, "MODELO_FALTANTE", f"Falta el modelo de embeddings {e.etiqueta}.")
+            raise ApiError(409, "MODELO_FALTANTE", f"Falta el modelo de embeddings {e.etiqueta}.") from e
         except OllamaCaido:
-            raise ApiError(503, "OLLAMA_CAIDO", "Ollama no responde en localhost:11434.")
+            raise ApiError(503, "OLLAMA_CAIDO", "Ollama no responde en localhost:11434.") from None
 
     # --- API-032 verificador de código (MOD-110, doc 23) ------------------------------
     @app.exception_handler(verificador.VerificadorError)
@@ -586,11 +595,11 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
         try:
             await ollama.cargar(fila["etiqueta"])
         except OllamaCaido:
-            raise ApiError(503, "OLLAMA_CAIDO", "Ollama no responde en localhost:11434.")
+            raise ApiError(503, "OLLAMA_CAIDO", "Ollama no responde en localhost:11434.") from None
         except ModeloFaltante:
-            raise ApiError(404, "MODELO_FALTANTE", f"El modelo {fila['etiqueta']} no está descargado.")
+            raise ApiError(404, "MODELO_FALTANTE", f"El modelo {fila['etiqueta']} no está descargado.") from None
         except OllamaError as e:
-            raise ApiError(502, "OLLAMA_ERROR", str(e))
+            raise ApiError(502, "OLLAMA_ERROR", str(e)) from e
         return {"cargado": normalizar(fila["etiqueta"]), "alias": fila["alias"]}
 
     # --- API-020..023 conversaciones -------------------------------------------------
@@ -695,7 +704,7 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
                     v = estado[k]
                     estado[k] = apariencia.normalizar(k, v if isinstance(v, str) else json.dumps(v))
         except apariencia.AparienciaError as e:
-            raise ApiError(400, e.codigo, e.mensaje)
+            raise ApiError(400, e.codigo, e.mensaje) from e
         return apariencia.paleta(estado, cuerpo.tema_efectivo)
 
     def _dir_fondos() -> Path:
@@ -719,8 +728,9 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
 
     @app.get("/apariencia/fondo/{archivo}")
     async def apariencia_fondo(archivo: str):
-        from fastapi.responses import FileResponse
         import re as _re
+
+        from fastapi.responses import FileResponse
         if not _re.fullmatch(r"[0-9a-f]{16}\.(png|jpg|webp|gif)", archivo):
             raise ApiError(404, "NO_ENCONTRADO", "No existe ese fondo.")
         ruta = _dir_fondos() / archivo
@@ -759,12 +769,12 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
                         tabla = json.loads(valor)
                         assert isinstance(tabla, dict) and all(isinstance(v, int) and 0 <= v <= 10_000 for v in tabla.values())
                     except (ValueError, AssertionError):
-                        raise ApiError(400, "AJUSTE_INVALIDO", "XP por dificultad: JSON como {\"facil\": 20}.")
+                        raise ApiError(400, "AJUSTE_INVALIDO", "XP por dificultad: JSON como {\"facil\": 20}.") from None
                 if clave == "lab.attackbox_url" and valor:
                     try:
                         Laboratorio._validar_url(valor)
                     except LabError as e:
-                        raise ApiError(400, e.codigo, e.mensaje)
+                        raise ApiError(400, e.codigo, e.mensaje) from e
                 continue
             if clave in CLAVES_RUTA:
                 ruta = str(valor).strip().strip('"')
@@ -774,7 +784,7 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
                     try:
                         proy_mod.Proyectos.validar_carpeta(ruta)
                     except ProyectoError as e:
-                        raise ApiError(400, e.codigo, e.mensaje)
+                        raise ApiError(400, e.codigo, e.mensaje) from e
                 cuerpo[clave] = ruta
                 continue
             if clave in CLAVES_CERRADAS and valor not in CLAVES_CERRADAS[clave]:
@@ -789,7 +799,7 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
                 try:
                     float(valor)
                 except ValueError:
-                    raise ApiError(400, "UMBRAL_INVALIDO", f"'{clave}' debe ser un número.")
+                    raise ApiError(400, "UMBRAL_INVALIDO", f"'{clave}' debe ser un número.") from None
         if "nube.modelo" in cuerpo and cuerpo["nube.modelo"] not in MODELOS_NUBE:
             raise ApiError(400, "NUBE_MODELO", f"Modelos admitidos: {', '.join(MODELOS_NUBE)}.")
         # La clave va al Administrador de credenciales de Windows, NUNCA a la BBDD (NFR-010).
@@ -830,7 +840,7 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
             return await nube.probar(db.get_setting("nube.modelo", "claude-opus-5-5"),
                                      backend=cloud_client.backend_nube(db))
         except NubeError as e:
-            raise ApiError(400, e.codigo, e.mensaje)
+            raise ApiError(400, e.codigo, e.mensaje) from e
 
     # --- API-004 estimador y troceo -----------------------------------------------------
     @app.post("/estimar")
@@ -838,7 +848,7 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
         try:
             return motor.estimar(cuerpo.modo, cuerpo.tier, cuerpo.esfuerzo, cuerpo.texto, cuerpo.sesion_id)
         except LookupError as e:
-            raise ApiError(404, "SESION_INVALIDA", str(e))
+            raise ApiError(404, "SESION_INVALIDA", str(e)) from e
 
     @app.post("/trocear")
     async def trocear(cuerpo: TrocearIn):

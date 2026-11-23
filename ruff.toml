@@ -1,0 +1,21 @@
+target-version = "py311"
+line-length = 120
+extend-exclude = ["build", "dist", "docs", "ui"]
+
+[lint]
+# Errores reales, imports, modernización y bugs típicos. Sin reglas de estilo puro.
+select = ["F", "E9", "E7", "W6", "I", "UP", "B", "SIM", "FURB167", "PLW1510", "BLE001", "S110"]
+ignore = [
+    "SIM105",   # try/except/pass es más legible que contextlib.suppress aquí
+    "SIM108",   # ternarios forzados
+    "E741",     # nombres de una letra (l, i) en bucles cortos
+    "SIM112",   # ProgramFiles/ProgramW6432 se escriben así en Windows (el entorno no distingue mayúsculas)
+    "SIM117",   # async with anidados: el segundo depende del primero (stream dentro del cliente)
+    "B008",     # Depends()/Body() en firmas de FastAPI
+]
+
+[lint.per-file-ignores]
+# Modo Seguridad y guardarraíles: no se tocan en esta pasada (solo mensajes de error).
+"tests/**" = ["B", "SIM", "BLE001", "S110", "PLW1510"]
+"backend/modes/seguridad.py" = ["ALL"]
+"backend/modes/guardarrailes.py" = ["ALL"]

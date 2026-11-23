@@ -18,8 +18,9 @@ import shutil
 import subprocess
 import threading
 import time
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 import anthropic
 import keyring
@@ -115,7 +116,7 @@ def comprobar_sesion(forzar: bool = False) -> str:
         try:
             r = subprocess.run([b, "auth", "status"], capture_output=True, text=True, encoding="utf-8",
                                errors="replace", timeout=60, env=_entorno(), cwd=_cwd_aislado(),
-                               creationflags=_SIN_VENTANA)
+                               creationflags=_SIN_VENTANA, check=False)
             info = json.loads(r.stdout)
             estado = "ok" if info.get("loggedIn") else "sin_sesion"
             plan = info.get("subscriptionType") or info.get("authMethod")
@@ -352,8 +353,8 @@ class ClienteClaudeCode:
                             yield {"tipo": "token", "texto": delta["text"]}
                 elif d.get("type") == "result":
                     resultado = d
-        except asyncio.TimeoutError:
-            raise NubeError("NUBE_ERROR", "Claude Code no respondió a tiempo.")
+        except TimeoutError:
+            raise NubeError("NUBE_ERROR", "Claude Code no respondió a tiempo.") from None
         finally:
             if proc.poll() is None:
                 proc.kill()

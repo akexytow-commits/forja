@@ -38,7 +38,7 @@ class ProyectoError(Exception):
 
 
 def _slug(texto: str, largo: int = 60) -> str:
-    s = re.sub(r"[^\w\-]+", "_", texto.strip(), flags=re.U).strip("_")
+    s = re.sub(r"[^\w\-]+", "_", texto.strip(), flags=re.UNICODE).strip("_")
     return s[:largo] or "sin_nombre"
 
 

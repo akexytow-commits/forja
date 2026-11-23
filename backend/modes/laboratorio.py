@@ -36,7 +36,7 @@ abrir_url = webbrowser.open
 
 def _ejecutar(cmd: list[str], timeout: float = 8.0) -> tuple[int, str]:
     try:
-        r = subprocess.run(cmd, capture_output=True, timeout=timeout, creationflags=SIN_VENTANA)
+        r = subprocess.run(cmd, capture_output=True, timeout=timeout, creationflags=SIN_VENTANA, check=False)
     except (OSError, subprocess.SubprocessError):
         return -1, ""
     bruto = r.stdout or b""
@@ -171,7 +171,7 @@ class Laboratorio:
         try:
             lanzar(cmd, creationflags=CREAR_CONSOLA)
         except OSError as e:
-            raise LabError(500, "LANZAR_FALLO", f"No pude lanzar la instalación: {e}")
+            raise LabError(500, "LANZAR_FALLO", f"No pude lanzar la instalación: {e}") from e
         self.db.set_setting("lab.backend", backend)
         return {**p, "estado": "ejecutando",
                 "mensaje": "Se abrió la instalación en una ventana aparte (acepta el aviso de Windows). "
@@ -197,7 +197,7 @@ class Laboratorio:
         return p
 
     def carpeta(self, seccion: dict[str, Any]) -> Path:
-        slug = re.sub(r"[^\w\-]+", "-", seccion["titulo"].lower(), flags=re.U).strip("-")[:40]
+        slug = re.sub(r"[^\w\-]+", "-", seccion["titulo"].lower(), flags=re.UNICODE).strip("-")[:40]
         return self.carpeta_base() / f"{seccion['id']:03d}-{slug}"
 
     def escribir_contexto(self, seccion: dict[str, Any], pistas: list[str], lab: dict[str, Any] | None) -> dict[str, Any]:
@@ -249,7 +249,7 @@ class Laboratorio:
             try:
                 lanzar(cmd, creationflags=CREAR_CONSOLA)
             except OSError as e:
-                raise LabError(500, "LANZAR_FALLO", f"No pude abrir la terminal: {e}")
+                raise LabError(500, "LANZAR_FALLO", f"No pude abrir la terminal: {e}") from e
             resultado["comando"] = " ".join(base)
         elif backend == "attackbox":
             url = self._validar_url(self.db.get_setting("lab.attackbox_url", "") or "")

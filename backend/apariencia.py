@@ -73,7 +73,7 @@ def _hex(c: tuple[float, float, float]) -> str:
 def mezcla(a: str, b: str, t: float) -> str:
     """a → b en proporción t (0 = a, 1 = b), en sRGB."""
     ra, rb = _rgb(a), _rgb(b)
-    return _hex(tuple(x + (y - x) * t for x, y in zip(ra, rb)))
+    return _hex(tuple(x + (y - x) * t for x, y in zip(ra, rb, strict=False)))
 
 
 def luminancia(h: str) -> float:
@@ -236,7 +236,7 @@ def normalizar(clave: str, valor: str) -> str:
         try:
             op = float(f.get("opacidad", 0.2))
         except (TypeError, ValueError):
-            raise AparienciaError("AJUSTE_INVALIDO", "Fondo: opacidad numérica.")
+            raise AparienciaError("AJUSTE_INVALIDO", "Fondo: opacidad numérica.") from None
         op = round(min(OPACIDAD_MAX, max(OPACIDAD_MIN, op)), 2)      # nunca tan opaca que reste legibilidad
         return json.dumps({"tipo": "imagen", "archivo": archivo, "opacidad": op}, separators=(",", ":"))
     return valor

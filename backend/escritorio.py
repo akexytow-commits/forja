@@ -59,7 +59,7 @@ def mensaje(texto: str, titulo: str = APP_NAME, error: bool = False) -> None:
         return
     try:
         ctypes.windll.user32.MessageBoxW(None, texto, titulo, 0x10 if error else 0x40)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, S110 — sin cuadro de diálogo no hay otra salida
         pass
 
 
@@ -84,7 +84,7 @@ def _carpeta_especial(nombre: str) -> Path:
     try:
         r = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
                             f"[Environment]::GetFolderPath('{nombre}')"], capture_output=True, text=True,
-                           timeout=30, creationflags=SIN_VENTANA)
+                           timeout=30, creationflags=SIN_VENTANA, check=False)
         if r.stdout.strip():
             return Path(r.stdout.strip())
     except (OSError, subprocess.TimeoutExpired):
@@ -102,7 +102,7 @@ def crear_acceso(destino_lnk: Path, exe: Path, descripcion: str = "FORJA — IA 
     env = {**os.environ, "FORJA_LNK": str(destino_lnk), "FORJA_EXE": str(exe), "FORJA_DIR": str(exe.parent),
            "FORJA_DESC": descripcion}
     r = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps], env=env,
-                       capture_output=True, text=True, timeout=60, creationflags=SIN_VENTANA)
+                       capture_output=True, text=True, timeout=60, creationflags=SIN_VENTANA, check=False)
     if r.returncode != 0 or not destino_lnk.exists():
         raise OSError(f"No pude crear el acceso directo {destino_lnk}: {r.stderr.strip()[:300]}")
 

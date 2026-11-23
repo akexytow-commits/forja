@@ -12,7 +12,8 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import deque
-from typing import Any, AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 
 INTERVALO_S = 0.5          # tick cada ~400–600 ms (07-...md)
 VENTANA_S = 2.0            # media móvil de tok/s
@@ -143,7 +144,7 @@ async def con_ticks(origen: AsyncIterator[Any], intervalo: float = INTERVALO_S) 
         while True:
             try:
                 ok, x = await asyncio.wait_for(cola.get(), timeout=intervalo)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 yield None
                 continue
             if not ok:
@@ -156,5 +157,5 @@ async def con_ticks(origen: AsyncIterator[Any], intervalo: float = INTERVALO_S) 
             tarea.cancel()
             try:
                 await tarea
-            except BaseException:  # noqa: BLE001
+            except BaseException:  # noqa: BLE001, S110 — la tarea cancelada no aporta nada
                 pass

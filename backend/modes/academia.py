@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import AsyncIterator
 from datetime import date, timedelta
-from typing import Any, AsyncIterator
+from typing import Any
 
 from .. import audit, cloud_client
 from ..cloud_client import ClienteNube, NubeError
@@ -23,7 +24,7 @@ from ..db import DB, ahora
 from ..ollama_client import ModeloFaltante, OllamaCaido, OllamaClient, OllamaError
 from ..router import FAMILIA, cargar_prompt
 from . import guardarrailes
-from .laboratorio import Laboratorio, LabError
+from .laboratorio import LabError, Laboratorio
 from .lenguaje import sin_tildes
 
 ENFOQUES = ("ofensivo", "defensivo")
@@ -71,12 +72,12 @@ def ocultar_respuesta(texto: str, esperada: str | None) -> str:
     """Las pistas y el feedback nunca dicen la respuesta (A4): se tapa si el modelo la suelta."""
     for a in alternativas(esperada):
         if len(a) >= 3 and a not in ("no", "si"):
-            texto = re.sub(re.escape(a), "▒▒▒", texto, flags=re.I)
+            texto = re.sub(re.escape(a), "▒▒▒", texto, flags=re.IGNORECASE)
     return texto
 
 
 def sin_bloques_codigo(texto: str) -> str:
-    return re.sub(r"```.*?(```|$)", "_(sin código en este nivel de pista: inténtalo tú primero)_", texto, flags=re.S)
+    return re.sub(r"```.*?(```|$)", "_(sin código en este nivel de pista: inténtalo tú primero)_", texto, flags=re.DOTALL)
 
 
 class Academia:
@@ -262,20 +263,20 @@ class Academia:
                 if m.get("content"):
                     yield "token", m["content"]
         except ModeloFaltante as ex:
-            raise AcademiaError(400, "MODELO_FALTA", f"Falta el modelo {ex}. Descárgalo en Estado del sistema.")
+            raise AcademiaError(400, "MODELO_FALTA", f"Falta el modelo {ex}. Descárgalo en Estado del sistema.") from ex
         except OllamaCaido:
-            raise AcademiaError(503, "OLLAMA_CAIDO", "Ollama no responde en localhost:11434.")
+            raise AcademiaError(503, "OLLAMA_CAIDO", "Ollama no responde en localhost:11434.") from None
         except OllamaError as ex:
-            raise AcademiaError(502, "OLLAMA_ERROR", str(ex))
+            raise AcademiaError(502, "OLLAMA_ERROR", str(ex)) from ex
         except NubeError as ex:
-            raise AcademiaError(400, ex.codigo, ex.mensaje)
+            raise AcademiaError(400, ex.codigo, ex.mensaje) from ex
 
     async def _completo(self, system: str, pedido: str, tier: str, esfuerzo: str, uso: str) -> str:
         texto = ""
         async for tipo, t in self._stream(system, [{"role": "user", "content": pedido}], tier, esfuerzo, uso):
             if tipo == "token":
                 texto += t
-        return re.sub(r"<think>.*?</think>", "", texto, flags=re.S).strip()
+        return re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL).strip()
 
     @staticmethod
     def _ficha(s: dict[str, Any]) -> str:
@@ -318,7 +319,7 @@ class Academia:
         except AcademiaError as e:
             yield _sse("error", {"codigo": e.codigo, "mensaje": e.mensaje})
             return
-        texto = ocultar_respuesta(re.sub(r"<think>.*?</think>", "", texto, flags=re.S).strip(),
+        texto = ocultar_respuesta(re.sub(r"<think>.*?</think>", "", texto, flags=re.DOTALL).strip(),
                                   s["respuesta_esperada"])
         if not texto:
             yield _sse("error", {"codigo": "LECCION_VACIA", "mensaje": "El modelo no devolvió texto."})
@@ -543,7 +544,7 @@ class Academia:
         except AcademiaError as e:
             yield _sse("error", {"codigo": e.codigo, "mensaje": e.mensaje})
             return
-        respuesta = ocultar_respuesta(re.sub(r"<think>.*?</think>", "", respuesta, flags=re.S).strip(), esperada)
+        respuesta = ocultar_respuesta(re.sub(r"<think>.*?</think>", "", respuesta, flags=re.DOTALL).strip(), esperada)
         if not respuesta:
             yield _sse("error", {"codigo": "RESPUESTA_VACIA", "mensaje": "El modelo no devolvió texto."})
             return

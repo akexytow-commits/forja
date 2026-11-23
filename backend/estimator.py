@@ -37,7 +37,7 @@ DOMINIOS_DIFICILES = (
     "bootloader", "rtos", "dma", "interrupci", "compilador", "emulador", "protocolo", "radio", "sub-ghz",
 )
 TODO_DE_UNA = ("todo de una vez", "de una vez", "completo", "completa", "entero", "entera", "todas las", "todos los")
-RE_FICHERO = re.compile(r"\b[\w-]+\.(c|h|cpp|hpp|py|js|ts|rs|go|java|ps1|sh|ino|fap)\b", re.I)
+RE_FICHERO = re.compile(r"\b[\w-]+\.(c|h|cpp|hpp|py|js|ts|rs|go|java|ps1|sh|ino|fap)\b", re.IGNORECASE)
 RE_N_PIEZAS = re.compile(r"\b(\d+)\s+(ficheros|archivos|modulos|funciones|pantallas|clases|endpoints)\b")
 
 
@@ -109,7 +109,7 @@ def estimar(modo: str, tier: str, esfuerzo: str, texto: str, contexto: list[str]
 def troceo_heuristico(texto: str) -> list[dict[str, Any]]:
     """Si el usuario ya enumeró partes, se usan; si no, fases genéricas de un proyecto de código."""
     lineas = [re.sub(r"^\s*(\d+[.)]|[-*•])\s*", "", l).strip() for l in texto.splitlines()]
-    enumeradas = [l for l, orig in zip(lineas, texto.splitlines()) if l and re.match(r"^\s*(\d+[.)]|[-*•])\s", orig)]
+    enumeradas = [l for l, orig in zip(lineas, texto.splitlines(), strict=False) if l and re.match(r"^\s*(\d+[.)]|[-*•])\s", orig)]
     if len(enumeradas) >= 2:
         return [{"texto": l[:300], "estimacion_min": 30} for l in enumeradas[:10]]
     tema = texto.strip().splitlines()[0][:120] if texto.strip() else "la tarea"
@@ -121,7 +121,7 @@ def troceo_heuristico(texto: str) -> list[dict[str, Any]]:
         "Integrar las partes, compilar y probar",
         "Documentar el uso y pulir detalles",
     ]
-    return [{"texto": f, "estimacion_min": m} for f, m in zip(fases, (20, 30, 60, 60, 45, 20))]
+    return [{"texto": f, "estimacion_min": m} for f, m in zip(fases, (20, 30, 60, 60, 45, 20), strict=False)]
 
 
 def sanear_pasos(datos: Any) -> list[dict[str, Any]]:

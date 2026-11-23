@@ -10,8 +10,9 @@ import json
 import os
 import shutil
 import subprocess
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 import httpx
 

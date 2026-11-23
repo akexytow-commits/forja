@@ -63,8 +63,8 @@ def parsear_json_tolerante(texto: str) -> Any:
     if not isinstance(texto, str):
         return texto
     t = texto.strip()
-    t = re.sub(r"<think>.*?</think>", "", t, flags=re.S)
-    t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t.strip(), flags=re.I | re.M)
+    t = re.sub(r"<think>.*?</think>", "", t, flags=re.DOTALL)
+    t = re.sub(r"^```(?:json)?\s*|\s*```$", "", t.strip(), flags=re.IGNORECASE | re.MULTILINE)
     i, j = t.find("{"), t.rfind("}")
     if i != -1 and j > i:
         t = t[i:j + 1]
@@ -112,7 +112,7 @@ def _dia(v: Any, hoy_: date, dias: list[str]) -> str | None:
         except ValueError:
             return None
         return max(d, hoy_).isoformat()
-    for k, iso in enumerate(dias):  # "lunes 23", "Día 2"...
+    for iso in dias:  # "lunes 23", "Día 2"...
         if iso in s:
             return iso
     return None
@@ -198,7 +198,7 @@ class Organizador:
         pila: list[tuple[int, int]] = []  # (nivel, id) para anidar por sangría
         base_orden = (self.db.one("SELECT COALESCE(MAX(orden), 0) AS m FROM tasks WHERE list_id = ?",
                                   (lista_id,)) or {"m": 0})["m"]
-        for k, (cruda, d) in enumerate(zip(crudas, datos), 1):
+        for k, (cruda, d) in enumerate(zip(crudas, datos, strict=False), 1):
             nivel = lenguaje.sangria(cruda)
             while pila and pila[-1][0] >= nivel:
                 pila.pop()
@@ -284,7 +284,7 @@ class Organizador:
                 try:
                     sets["dia_asignado"] = date.fromisoformat(str(v)).isoformat()
                 except ValueError:
-                    raise TareasError(400, "DIA_INVALIDO", "El día va como AAAA-MM-DD.")
+                    raise TareasError(400, "DIA_INVALIDO", "El día va como AAAA-MM-DD.") from None
             movida = True
             # P2: lo que mueves a mano queda fijado (salvo que digas lo contrario).
             if "fijada" not in cambios:
@@ -396,9 +396,9 @@ class Organizador:
             except (OllamaCaido, OllamaError) as e:
                 avisos.append(f"Sin IA ({e}); he repartido por prioridad.")
             except ModeloFaltante as e:
-                raise TareasError(400, "MODELO_FALTA", f"Falta el modelo {e}. Descárgalo en Estado del sistema.")
+                raise TareasError(400, "MODELO_FALTA", f"Falta el modelo {e}. Descárgalo en Estado del sistema.") from e
             except NubeError as e:
-                raise TareasError(400, e.codigo, e.mensaje)
+                raise TareasError(400, e.codigo, e.mensaje) from e
 
         # Orden de colocación: el de la IA (día sugerido, orden); si no, prioridad y orden actual.
         def clave(t: dict[str, Any]):

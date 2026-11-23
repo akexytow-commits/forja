@@ -12,8 +12,9 @@ import io
 import json
 import os
 import re
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 import numpy as np
 
@@ -367,7 +368,7 @@ class BaseConocimiento:
                     c.execute("DELETE FROM kb_chunks WHERE doc_id = ?", (d["id"],))
                     c.executemany(
                         "INSERT INTO kb_chunks(kb_id, doc_id, texto, origen, embedding, orden) VALUES (?, ?, ?, ?, ?, ?)",
-                        [(kb_id, d["id"], t, d["origen"], vector_blob(v), n) for n, (t, v) in enumerate(zip(trozos, vectores))])
+                        [(kb_id, d["id"], t, d["origen"], vector_blob(v), n) for n, (t, v) in enumerate(zip(trozos, vectores, strict=False))])
                     c.execute("UPDATE kb_documents SET num_chunks = ?, indexado_at = ? WHERE id = ?",
                               (len(trozos), ahora(), d["id"]))
                 self._cache.pop(kb_id, None)
@@ -419,7 +420,7 @@ class BaseConocimiento:
             f"SELECT c.id, c.texto, c.origen, c.orden, c.doc_id, d.titulo FROM kb_chunks c "
             f"JOIN kb_documents d ON d.id = c.doc_id WHERE c.id IN ({','.join('?' * len(elegidos))})", tuple(elegidos))}
         fragmentos = []
-        for n, (cid, i) in enumerate(zip(elegidos, orden), 1):
+        for n, (cid, i) in enumerate(zip(elegidos, orden, strict=False), 1):
             f = filas[cid]
             fragmentos.append({"n": n, "id": cid, "doc_id": f["doc_id"], "titulo": f["titulo"], "origen": f["origen"],
                                "orden": f["orden"], "texto": f["texto"], "score": round(float(scores[i]), 4)})

@@ -70,7 +70,7 @@ def _entorno() -> dict[str, str]:
 def _correr(args: list[str], entrada: str | None = None, cwd: str | None = None) -> subprocess.CompletedProcess:
     return subprocess.run(args, input=entrada.encode("utf-8") if entrada is not None else None,
                           capture_output=True, timeout=TIMEOUT_S, env=_entorno(), cwd=cwd,
-                          creationflags=SIN_VENTANA, stdin=None if entrada is not None else subprocess.DEVNULL)
+                          creationflags=SIN_VENTANA, stdin=None if entrada is not None else subprocess.DEVNULL, check=False)
 
 
 def _txt(b: bytes) -> str:
@@ -172,12 +172,12 @@ def _powershell(codigo: str) -> dict[str, Any]:
         cmd = [exe, "-NoProfile", "-NonInteractive", "-EncodedCommand",
                base64.b64encode(_PS.encode("utf-16-le")).decode()]
         p = subprocess.run(cmd, capture_output=True, timeout=TIMEOUT_S + 30, env={**_entorno(), **env_extra},
-                           creationflags=SIN_VENTANA, stdin=subprocess.DEVNULL)
+                           creationflags=SIN_VENTANA, stdin=subprocess.DEVNULL, check=False)
     salida = _txt(p.stdout).strip()
     try:
         datos = json.loads(salida.splitlines()[-1]) if salida else {}
     except (ValueError, IndexError):
-        raise VerificadorError(500, "VERIFICADOR_FALLO", f"PowerShell no devolvió un resultado legible: {_txt(p.stderr)[:300]}")
+        raise VerificadorError(500, "VERIFICADOR_FALLO", f"PowerShell no devolvió un resultado legible: {_txt(p.stderr)[:300]}") from None
     lista = datos.get("errores") or []
     if isinstance(lista, dict):
         lista = [lista]
@@ -272,7 +272,7 @@ def _javascript(codigo: str) -> dict[str, Any]:
     node = _node_exe()
     if not node:
         return _no_disponible("javascript", "Verificador de JavaScript no disponible: requiere Node.js.", "node")
-    esm = re.search(r"^\s*(import\s.+from\s|import\s*['\"{*]|export\s)", codigo, re.M)
+    esm = re.search(r"^\s*(import\s.+from\s|import\s*['\"{*]|export\s)", codigo, re.MULTILINE)
     with tempfile.TemporaryDirectory(prefix="forja-verif-") as d:
         ruta = Path(d) / ("bloque.mjs" if esm else "bloque.js")
         ruta.write_text(codigo, encoding="utf-8")
@@ -301,7 +301,7 @@ def verificar_sync(lenguaje: str | None, codigo: str) -> dict[str, Any]:
     try:
         r = VERIFICADORES[leng](codigo)
     except subprocess.TimeoutExpired:
-        raise VerificadorError(504, "VERIFICADOR_TIEMPO", f"El verificador de {NOMBRE[leng]} tardó demasiado.")
+        raise VerificadorError(504, "VERIFICADOR_TIEMPO", f"El verificador de {NOMBRE[leng]} tardó demasiado.") from None
     except OSError as e:
         return _no_disponible(leng, f"No pude lanzar el verificador de {NOMBRE[leng]}: {e}")
     r.setdefault("lenguaje", leng)
@@ -337,7 +337,7 @@ def instalar(id_: str, confirmado: bool) -> dict[str, Any]:
                 f"Start-Process -FilePath winget -ArgumentList 'install','--id','{info['winget']}','-e'"],
                creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0))
     except OSError as e:
-        raise VerificadorError(500, "LANZAR_FALLO", f"No pude lanzar la instalación: {e}")
+        raise VerificadorError(500, "LANZAR_FALLO", f"No pude lanzar la instalación: {e}") from e
     return {**propuesta, "estado": "ejecutando",
             "mensaje": "Se abrió la instalación en una ventana aparte. Cuando termine, vuelve a pulsar «Comprobar»."}
 

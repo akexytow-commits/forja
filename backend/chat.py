@@ -2,18 +2,19 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from dataclasses import replace
+from typing import Any
 
 from . import audit, cloud_client, estimator
-from .conocimiento import BaseConocimiento, KBError, bloque_contexto, citadas
 from .cloud_client import ClienteNube, NubeError
+from .conocimiento import BaseConocimiento, KBError, bloque_contexto, citadas
 from .db import DB, ahora
-from .ollama_client import ModeloFaltante, OllamaCaido, OllamaClient, OllamaError
-from .modes.seguridad import Seguridad, SeguridadError
 from .modes.proyectos import Proyectos
-from .telemetria import Telemetria, con_ticks, objetivo_tokens
+from .modes.seguridad import Seguridad, SeguridadError
+from .ollama_client import ModeloFaltante, OllamaCaido, OllamaClient, OllamaError
 from .router import FAMILIA, RouterError, resolver, tokens_aprox
-from dataclasses import replace
+from .telemetria import Telemetria, con_ticks, objetivo_tokens
 
 MODOS_DISPONIBLES = {"scripts", "seguridad"}  # Tareas tiene vista propia (Rama 3). Seguridad, tras el gate (ST-030).
 MARCA_INTERRUMPIDA = "\n\n_[respuesta interrumpida]_"
