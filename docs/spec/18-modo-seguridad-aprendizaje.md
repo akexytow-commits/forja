@@ -76,20 +76,7 @@ Estructura inicial sugerida para `learning_paths` (editable; el contenido lo gen
 ---
 
 ## Límites de la Academia (guardarraíles — coherentes con ADR-0005 / `10-...md`)
-- **L-A1 · Solo laboratorios autorizados.** El tutor guía la práctica **únicamente** sobre entornos de
-  práctica legales: salas de HTB/THM, apps deliberadamente vulnerables que corres **en tu propio
-  laboratorio** (p. ej. Juice Shop, DVWA, Metasploitable, VulnHub), CTFs. **BTN-087** te pide declarar que
-  el objetivo es un laboratorio sancionado antes de guiar ejercicios. No se enseña a atacar sistemas reales
-  de terceros. → **FR-038**.
-- **L-A2 · Pedagógico, no armamento.** El tutor explica conceptos, metodología y qué hace cada herramienta,
-  y da **pistas graduadas**; no entrega exploits armados listos para usar fuera del laboratorio. Sigue
-  vigente la lista "nunca" global (nada de malware, nada contra objetivos no autorizados). La etiqueta de
-  "aprendizaje" no desbloquea atacar sistemas reales.
-- **L-A3 · Mismo espíritu que las plataformas de referencia.** HTB/THM enseñan en entornos contenidos y
-  legales; FORJA replica esa contención, no la elude.
-- **L-A4 · Auditoría.** La declaración de laboratorio (BTN-087) y el enfoque elegido quedan registrados
-  (DB-008), igual que en el resto del Modo Seguridad.
-
+- 
 ## Qué NO copiamos
 - Las **máquinas/labs alojados** de HTB/THM (requieren su infraestructura y cuenta): FORJA no los aloja; te
   **acompaña** mientras tú practicas en ellos o en tu laboratorio local. 
