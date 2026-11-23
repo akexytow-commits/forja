@@ -19,7 +19,7 @@ from typing import Any
 import numpy as np
 
 from .db import DB, ahora
-from .ollama_client import OllamaClient
+from .ollama_client import OllamaClient, normalizar
 from .router import tokens_aprox
 
 EMBED_ALIAS = "embeddings"
@@ -399,6 +399,20 @@ class BaseConocimiento:
             matriz = np.zeros((0, 0), dtype=np.float32)
         self._cache[kb_id] = (firma, matriz, ids)
         return matriz, ids
+
+    async def precalentar(self, kb_id: str | int | None, instalados: list[str]) -> bool:
+        """Al arrancar, con una base activa: carga el modelo de embeddings (keep_alive largo) y la matriz de
+        vectores, para que la primera pregunta no pague el arranque en frío. Sin base activa no hace nada."""
+        try:
+            kb = self._kb(int(kb_id)) if kb_id not in (None, "") else None
+        except (KBError, ValueError, TypeError):
+            return False
+        if not kb or normalizar(kb["embed_modelo"]) not in instalados:
+            return False
+        if not self._matriz(kb["id"])[1]:
+            return False
+        await self.ollama.embed(kb["embed_modelo"], [f"{PREFIJO_QUERY}hola"], NUM_CTX_EMBED)
+        return True
 
     async def buscar(self, kb_id: int, query: str, k: int = K_DEFECTO) -> dict[str, Any]:
         kb = self._kb(kb_id)

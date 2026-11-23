@@ -16,7 +16,7 @@ from typing import Any
 
 import httpx
 
-from .config import KEEP_ALIVE
+from .config import KEEP_ALIVE, KEEP_ALIVE_EMBED, NUM_CTX_DEFECTO, NUM_THREAD
 
 
 class OllamaCaido(Exception):
@@ -39,6 +39,11 @@ def normalizar(etiqueta: str) -> str:
 
 NO_THINK = "/no_think"
 NUM_PREDICT_MIN_NO_THINK = 768   # = router.NUM_PREDICT_MIN_NO_THINK (doc 04 rev. 8)
+
+
+def con_hilos(opciones: dict[str, Any]) -> dict[str, Any]:
+    """Todas las peticiones llevan el mismo num_thread (config.NUM_THREAD): si variara, Ollama recargaría el modelo."""
+    return {**opciones, "num_thread": NUM_THREAD}
 
 
 def es_embeddings(etiqueta: str) -> bool:
@@ -191,8 +196,8 @@ class OllamaClient:
     # --- embeddings (doc 24, API-072/073) ------------------------------------
     async def embed(self, etiqueta: str, textos: list[str], num_ctx: int = 8192) -> list[list[float]]:
         """POST /api/embed: un vector por texto. num_ctx 8192 (el defecto de Ollama, 2048, corta fragmentos largos)."""
-        cuerpo = {"model": normalizar(etiqueta), "input": textos, "truncate": True, "keep_alive": KEEP_ALIVE,
-                  "options": {"num_ctx": num_ctx, "num_gpu": 0}}
+        cuerpo = {"model": normalizar(etiqueta), "input": textos, "truncate": True, "keep_alive": KEEP_ALIVE_EMBED,
+                  "options": con_hilos({"num_ctx": num_ctx, "num_gpu": 0})}
         try:
             async with self._client(timeout=httpx.Timeout(10.0, read=600.0)) as c:
                 r = await c.post("/api/embed", json=cuerpo)
@@ -207,15 +212,24 @@ class OllamaClient:
             raise OllamaError(f"/api/embed devolvió {len(vectores)} vectores para {len(textos)} textos.")
         return vectores
 
-    async def cargar(self, etiqueta: str) -> None:
+    async def cargar(self, etiqueta: str, num_ctx: int = NUM_CTX_DEFECTO, system: str | None = None) -> None:
+        """Carga el modelo con el mismo num_ctx que usará el chat (si no, Ollama lo recarga en el primer mensaje).
+        Con `system`, además lo evalúa una vez: Ollama guarda ese prefijo en caché y el primer mensaje no paga
+        el prompt de sistema (~500 tokens ≈ 13 s en este portátil)."""
         etiqueta = normalizar(etiqueta)
         await self.asegurar_unico(etiqueta)
+        opciones: dict[str, Any] = con_hilos({"num_gpu": 0, "num_ctx": num_ctx})
+        if system:
+            ruta, cuerpo = "/api/chat", {"model": etiqueta, "keep_alive": KEEP_ALIVE, "stream": False,
+                                         "messages": [{"role": "system", "content": system}],
+                                         "options": {**opciones, "num_predict": 1}}
+            if es_qwen3(etiqueta):
+                cuerpo["think"] = False
+        else:
+            ruta, cuerpo = "/api/generate", {"model": etiqueta, "keep_alive": KEEP_ALIVE, "options": opciones}
         try:
             async with self._client(timeout=600.0) as c:
-                r = await c.post(
-                    "/api/generate",
-                    json={"model": etiqueta, "keep_alive": KEEP_ALIVE, "options": {"num_gpu": 0}},
-                )
+                r = await c.post(ruta, json=cuerpo)
         except httpx.ConnectError as e:
             raise OllamaCaido(str(e)) from e
         if r.status_code == 404:
@@ -237,7 +251,7 @@ class OllamaClient:
             "messages": mensajes,
             "stream": True,
             "keep_alive": KEEP_ALIVE,
-            "options": opciones,
+            "options": con_hilos(opciones),
         }
         if think is not None:
             cuerpo["think"] = think
@@ -290,7 +304,7 @@ class OllamaClient:
         """
         mensajes, opciones = sin_thinking(etiqueta, mensajes, opciones, think)
         cuerpo: dict[str, Any] = {"model": normalizar(etiqueta), "messages": mensajes, "stream": False,
-                                  "keep_alive": KEEP_ALIVE, "options": opciones}
+                                  "keep_alive": KEEP_ALIVE, "options": con_hilos(opciones)}
         if formato:
             cuerpo["format"] = formato
         if think is not None:

@@ -53,7 +53,7 @@ from .ollama_client import (
     es_embeddings,
     normalizar,
 )
-from .router import FAMILIA, OVERRIDE_ESFUERZO
+from .router import ESFUERZOS, FAMILIA, OVERRIDE_ESFUERZO, resolver
 from .sistema import disco_libre_mb, ram_libre_mb
 
 log = logging.getLogger("forja")
@@ -355,9 +355,15 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
             modo, tier = db.get_setting("estado.modo", "scripts"), db.get_setting("estado.tier", "pequeno")
             if modo != "scripts" or tier == "nube":
                 modo, tier = "scripts", "pequeno"
-            fila = db.one("SELECT etiqueta FROM models WHERE alias = ?", (FAMILIA[(modo, tier)],))
-            if fila and normalizar(fila["etiqueta"]) in await ollama.instalados():
-                await ollama.cargar(fila["etiqueta"])
+            esfuerzo = db.get_setting("estado.esfuerzo", "bajo")
+            plan = resolver(modo, tier, esfuerzo if esfuerzo in ESFUERZOS else "bajo", 400, motor.registro())
+            instalados = await ollama.instalados()
+            if plan.etiqueta_ollama and normalizar(plan.etiqueta_ollama) in instalados:
+                t0 = time.perf_counter()
+                await ollama.cargar(plan.etiqueta_ollama, plan.params["num_ctx"], plan.system_prompt)
+                log.info("Precarga de %s lista en %.1f s", plan.etiqueta_ollama, time.perf_counter() - t0)
+            # Base de conocimiento activa: deja cargado nomic-embed-text y la matriz de vectores en caché.
+            await motor.kb.precalentar(db.get_setting("estado.kb", ""), instalados)
         except Exception as e:  # noqa: BLE001 — nunca romper el arranque por la precarga
             log.info("Precarga omitida: %s", e)
 

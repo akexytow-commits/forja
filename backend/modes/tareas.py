@@ -16,6 +16,7 @@ from typing import Any
 
 from .. import audit, cloud_client
 from ..cloud_client import ClienteNube, NubeError
+from ..config import NUM_CTX_DEFECTO
 from ..db import DB, ahora
 from ..ollama_client import ModeloFaltante, OllamaCaido, OllamaClient, OllamaError
 from ..router import FAMILIA, cargar_prompt
@@ -232,7 +233,7 @@ class Organizador:
             try:
                 bruto = await self.ollama.chat_completo(
                     etiqueta, [{"role": "user", "content": prompt}],
-                    {"temperature": 0.1, "num_ctx": 2048, "num_predict": 200, "num_gpu": 0}, think=False)
+                    {"temperature": 0.1, "num_ctx": NUM_CTX_DEFECTO, "num_predict": 200, "num_gpu": 0}, think=False)
             except (OllamaCaido, ModeloFaltante, OllamaError):
                 return
             r = parsear_json_tolerante(bruto)

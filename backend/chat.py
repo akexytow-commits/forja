@@ -8,6 +8,7 @@ from typing import Any
 
 from . import audit, cloud_client, estimator
 from .cloud_client import ClienteNube, NubeError
+from .config import NUM_CTX_DEFECTO
 from .conocimiento import BaseConocimiento, KBError, bloque_contexto, citadas
 from .db import DB, ahora
 from .modes.proyectos import Proyectos
@@ -165,7 +166,7 @@ class MotorChat:
                     datos = await self.ollama.chat_json(
                         etiqueta,
                         [{"role": "system", "content": PROMPT_TROCEO}, {"role": "user", "content": texto}],
-                        {"temperature": temperatura, "num_ctx": 4096, "num_predict": 1500, "num_gpu": 0},
+                        {"temperature": temperatura, "num_ctx": NUM_CTX_DEFECTO, "num_predict": 1500, "num_gpu": 0},
                     )
                 except OllamaError:
                     continue
