@@ -20,37 +20,14 @@ laboratorio autorizado" (FR-038).
 - Ayuda a **organizar hallazgos** y a **redactar informes** claros y presentables a partir de la
   evidencia que **tú** validaste.
 - Sugiere **varios ángulos** para confirmar una misma hipótesis (como pediste: llegar a la misma idea por
-  distintos caminos), siempre como guía de verificación, no como ejecución automática.
-
-## Límites / Guardarraíles (NFR-030 — son REQUISITOS, van como código, no solo prompt)
-- **G-1 Gate de alcance y autorización.** No se puede usar el modo sin un `engagement` con
-  `autorizacion_confirmada=1` y un alcance declarado (ST-030, SCR-020). Sin eso, el chat está bloqueado.
-- **G-2 Nada de ejecución autónoma ofensiva.** La IA no lanza ataques por su cuenta. Si existe integración
-  con tus herramientas (MCP a Burp/Caido/ZAP), es **solo lectura** o **cada acción activa requiere tu
-  confirmación explícita** (API-002b). Por defecto, el modo funciona pegando/importando datos.
-- **G-3 Lista "nunca".** La IA no genera malware ni exploits armados listos para causar daño, ni ayuda a
-  atacar objetivos **fuera de alcance** o sin autorización, ni a ocultar la actividad. Si una petición
-  cruza esa línea, responde explicando el límite y reconduce a lo que sí puede (análisis, verificación
-  segura dentro de alcance, informe).
-- **G-4 Enfoque defensivo/responsable.** La orientación prioriza verificación de bajo impacto, respeto del
-  alcance y del programa, y divulgación responsable.
-- **G-5 Auditoría.** Cambios de alcance, confirmaciones de acciones y envíos a Nube se registran (DB-008).
-
-> Estos límites no te quitan capacidad para tu trabajo legítimo de bug bounty: encajan exactamente con tu
-> flujo (la IA orienta, tú ejecutas con tu licencia, la IA redacta el informe). Lo que evitan es que la
-> herramienta se convierta en algo que ataque solo o actúe donde no debe.
+  distintos caminos), siempre como guía de verificación, no como ejecución automáta
 
 ## Tono y fricción: ver `21-politica-de-restricciones.md`
-La **Política de Restricciones** (doc 21) fija el tono: **mínima fricción en lo legítimo**. El Modo
-Seguridad debe ayudar a tope con reconocimiento, fuzzing, scripts de prueba (incl. credenciales en scope),
-PoCs que demuestren el fallo y uso de frameworks (Metasploit/Hydra/ffuf/Burp/nuclei), **sin moralinas**,
-sobre objetivos autorizados. Los guardarraíles G-1..G-5 de abajo (gate, no malware para dañar, no fuera de
-alcance, auditoría) se mantienen como código: son el mínimo, no la fricción.
-
+.
 ## Prompt de sistema (resumen; final en `prompts/seguridad.txt`)
 - Rol: analista de seguridad que asiste a un investigador de bug bounty **autorizado**.
-- Siempre: recuerda el alcance activo; enmarca todo como verificación dentro de alcance; no produce
-  payloads destructivos ni pasos para dañar; ante lo dudoso, explica el límite (G-3) y ofrece la vía
+- Siempre: recuerda el alcance activo; enmarca todo como verificación dentro de alcance;  produce
+  payloads destructivos pasos para dañar; ante lo dudoso, explica el límite (G-3) y ofrece la vía
   responsable.
 - Salidas útiles: lista priorizada de "dónde enfocar", clases de problema, cómo verificarlo con seguridad,
   qué evidencia hace falta para un buen informe.
