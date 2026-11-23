@@ -13,10 +13,8 @@ Implementar los guardarraíles (`10-...md`, G-1..G-5) como **código y máquina 
 prompt:
 - **Gate de alcance/autorización (ST-030):** sin `engagement.autorizacion_confirmada=1` el modo está
   bloqueado a nivel de backend (no solo de UI).
-- **Sin ejecución autónoma (G-2):** la IA no tiene herramientas activas en este modo; cualquier
-  integración externa es solo lectura o pasa por confirmación por acción (ST-040).
-- **Lista "nunca" (G-3):** el backend y el prompt rechazan generación de malware/exploits armados o ayuda
-  a objetivos fuera de alcance; respuesta de rechazo + reconducción responsable.
+- **Sin ejecución autónoma (G-2):** la IA tiene herramientas activas en este modo; cualquier
+  integración externa es solo lectura o pasa por confirmación por acción o explotacion (ST-040).
 - **Auditoría (G-5):** cambios de alcance, confirmaciones y escalados a Nube se registran (DB-008).
 
 ## Alternativas consideradas
