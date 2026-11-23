@@ -39,9 +39,64 @@ Si faltan, la propia app lo detecta y lo descarga desde la pantalla *Estado del 
 | 9 Base de Conocimiento (RAG local, v1.1) | ✅ **SCR-050** (icono de libro en la barra): crear bases (BTN-103), **añadir documentos** (BTN-104: pegar, subir `.md/.txt/.pdf`, importar una carpeta o el **paquete semilla de Flipper Zero** desde una copia local del firmware → `documentation/` + `applications/examples/`) que lanza el indexado, **Reindexar** (BTN-105), quitar documentos, borrar base y **probar búsqueda**. Indexado (API-072): troceo de ~512 tokens con solape de 64 (corta en párrafo/línea/frase), embeddings con **`nomic-embed-text`** vía `/api/embed` (`search_document:`, `num_ctx` 8192, lotes de 8), vector float32 de 768 dim **normalizado** en `kb_chunks.embedding` (BLOB); progreso por SSE. Búsqueda (API-073): `search_query:` + coseno con numpy (matriz en caché por base). **Chat**: con la base activa (**BTN-106** en el selector inferior: activar/desactivar y ▾ para elegir), el Motor recupera top-k (6 por defecto, `kb.k` en SCR-050; recortado si no cabe en el contexto), antepone los fragmentos numerados con su origen y pide citar; la respuesta guarda las fuentes (`messages.fuentes`) y **BTN-107 «Ver fuentes citadas»** las muestra (citadas primero) también tras recargar. El modelo de embeddings **convive en RAM** con el del chat. Verificado con Ollama real (ver desviaciones) |
 | 8 Estudio de Apariencia | ✅ **SCR-040** (icono de paleta en la barra, o Ajustes › Apariencia, que ahora es su acceso directo, BTN-063). **Presets** (BTN-095): FORJA oscuro, FORJA claro, Alto contraste y tres con personalidad: Fragua, Medianoche y Papel. **Color y acento** (BTN-096): tema base oscuro/claro/sistema/alto contraste, 6 acentos o cualquier color, y colores base propios (fondo, superficie, texto); el resto de tonos se derivan solos. **Contraste comprobado** (WCAG AA): informe en vivo con cada ratio, y «Aplicar» se bloquea si algo no se lee (el backend lo vuelve a validar). **Tipografía y densidad** (BTN-097): sistema, mono, serif, redondeada (Bahnschrift) o humanista (Verdana); cómoda/compacta. **Fondo** (BTN-098): liso, degradado suave o una imagen tuya con opacidad del 5 % al 45 %. **Acento por modo** (opcional) y **una sola animación** (los mensajes aparecen), desactivable. **Vista previa en vivo** (BTN-099): toda la app se repinta al momento, más una maqueta con los dos selectores y una conversación de ejemplo; «Aplicar» lo guarda en `ui.*` y «Cancelar» (o Esc) lo deshace |
 
-Pruebas cubiertas (238): TST-083…085 (`tests/test_conocimiento.py`: troceo, indexado con vectores 768 float32 normalizados, importar carpeta con PDF, subir archivo, semilla Flipper, sin modelo de embeddings, búsqueda por coseno con origen, chat que inyecta contexto y cita, Nube auditada, y en Edge headless SCR-050 + BTN-106/107 incluso tras recargar), TST-001…006, 010…012, 020…023, 030…039, 032b, 040…048, 060…063, 070…072, 075…079, 100…102 (+ token, validación, CRUD) TST-073 (`tests/test_estudio.py`: presets y acentos legibles, CSS = backend, combinaciones ilegibles rechazadas, persistencia tras reiniciar y, en Edge headless, vista previa en vivo, bloqueo por contraste y el tema aplicado tras reiniciar el servidor), empaquetado (`tests/test_empaquetado.py`: abre el `dist\FORJA.exe` real como un doble clic, con `%APPDATA%` vacío y sin Ollama → ventana «FORJA», BBDD migrada, SCR-008 y una sola instancia; se salta si no se ha construido), TST-080…082 (`tests/test_verificador.py`, contra las herramientas reales del equipo; las que falten se saltan) y Rama 6 (`tests/test_rama6.py`: las preferencias `ui.*` persisten tras reiniciar, se re-pulen sin perder nada y **se aplican**, comprobado en Edge headless contra un servidor reiniciado; se salta si no hay Edge).
+Pruebas cubiertas (247): pasada de optimización (`tests/test_pulido.py`: precarga, num_thread único, embeddings precalentados, Ollama cortado a media respuesta, pistas, attack box, descargas), TST-083…085 (`tests/test_conocimiento.py`: troceo, indexado con vectores 768 float32 normalizados, importar carpeta con PDF, subir archivo, semilla Flipper, sin modelo de embeddings, búsqueda por coseno con origen, chat que inyecta contexto y cita, Nube auditada, y en Edge headless SCR-050 + BTN-106/107 incluso tras recargar), TST-001…006, 010…012, 020…023, 030…039, 032b, 040…048, 060…063, 070…072, 075…079, 100…102 (+ token, validación, CRUD) TST-073 (`tests/test_estudio.py`: presets y acentos legibles, CSS = backend, combinaciones ilegibles rechazadas, persistencia tras reiniciar y, en Edge headless, vista previa en vivo, bloqueo por contraste y el tema aplicado tras reiniciar el servidor), empaquetado (`tests/test_empaquetado.py`: abre el `dist\FORJA.exe` real como un doble clic, con `%APPDATA%` vacío y sin Ollama → ventana «FORJA», BBDD migrada, SCR-008 y una sola instancia; se salta si no se ha construido), TST-080…082 (`tests/test_verificador.py`, contra las herramientas reales del equipo; las que falten se saltan) y Rama 6 (`tests/test_rama6.py`: las preferencias `ui.*` persisten tras reiniciar, se re-pulen sin perder nada y **se aplican**, comprobado en Edge headless contra un servidor reiniciado; se salta si no hay Edge).
 La UI de la Rama 5 se recorrió además en Edge headless (CDP) con un Ollama falso lento: plantillas, nuevo proyecto,
 telemetría (esperando → pensando → respondiendo), BTN-100, guardar y sobrescribir, export, ajustes y cambio de tema/acento, sin errores de consola.
+
+## Pasada de optimización y robustez (2026-11-23)
+Regla: solo se queda lo que mueve un número **medido en este equipo** (Ryzen 3 5425U, 4 núcleos / 8 hilos,
+7,3 GB, solo CPU, Ollama 0.40.16, `qwen2.5-coder:3b`). Un commit por área; 238 → **247 tests** en verde.
+
+**Rendimiento** (commit «Rendimiento…»)
+
+| Medida | Antes | Después | Por qué |
+|---|---|---|---|
+| Primer mensaje tras arrancar FORJA: **1.er token** | 22,4 s | **3,7 s** | la precarga ya sirve (abajo) |
+| Primer mensaje tras arrancar: respuesta completa (~200 tokens) | 48,6 s | **29,9 s** | ídem |
+| Recarga del modelo en el primer mensaje | ~6 s | **0 s** | la precarga no fijaba `num_ctx`; el chat pide 8192 y Ollama **recarga** si cambia |
+| Prompt de sistema del modo (~509 tokens) en el primer mensaje | ~13 s (38 tok/s) | **en caché** | la precarga lo evalúa una vez; Ollama guarda el prefijo |
+| Evaluación del prompt, ~500 tokens | 37–39 tok/s | **50–51 tok/s** | `num_thread` 4 (físicos, el defecto) → 8 (lógicos) |
+| Evaluación del prompt, ~3000 tokens (RAG con 6 fragmentos) | 28–32 tok/s | **39–42 tok/s** (+30 %) | ídem |
+| Generación | 8,3–8,8 tok/s | 8,0–8,3 tok/s | igual dentro del ruido (6 hilos dio 5,9–9,2: descartado) |
+| Troceo / capa 2 de Tareas | recarga (4096 / 2048 ≠ 8192) | sin recarga | todos usan `NUM_CTX_DEFECTO` |
+| `nomic-embed-text` | `keep_alive` 30 min, frío en la 1.ª búsqueda | **4 h**, precalentado al arrancar si hay base activa | |
+
+Medido con `/api/chat` directo (`load_duration`, `prompt_eval_*`, `eval_*`), dos rondas intercaladas por
+configuración, y de extremo a extremo (app real: arranque → precarga → primer mensaje; una pasada con el
+código de antes y otra con el de ahora, que cuadra con la suma de las partes: 6 s + 13 s).
+`num_thread` y `num_ctx` son **iguales en todas las peticiones** (`ollama_client.con_hilos`): si cambiaran,
+Ollama recargaría el modelo. Ajustables con `FORJA_NUM_THREAD` y `FORJA_KEEP_ALIVE_EMBED`.
+
+**No hecho, a propósito** (no movía un número aquí): recortar los prompts de sistema (~400–650 tokens; tras la
+precarga ya están en caché) ni el historial (ya se recorta al presupuesto y Ollama reutiliza el prefijo del
+hilo mientras el modelo sigue cargado). El top-k del RAG ya estaba en 6 (rev. 18). Aviso de RAM: con
+`num_ctx` 8192, `qwen3:4b-instruct` ocupa **3,9 GB** en `/api/ps` (≈1,2 GB de caché KV): con Chrome abierto
+deja <1 GB libre. Es igual que antes (Academia, Seguridad y Organizar ya usaban 8192).
+
+**Calidad** (commit «Calidad…»): `ruff.toml` del proyecto (F, I, UP, B, SIM + robustez); el backend pasa
+limpio. `raise … from`, `zip(strict=False)`, `subprocess.run(check=False)` explícitos, imports ordenados.
+Sin código muerto que quitar (F401/F841 ya limpios). Seguridad y guardarraíles excluidos.
+
+**Robustez y mensajes** (commit «Robustez…»):
+- Ollama que **se cae a media respuesta** (cualquier `httpx.TransportError`: antes un corte del stream no se
+  capturaba): error claro, lo generado se guarda marcado como interrumpido.
+- Descargas de modelos: timeout del registro (lo que pasa en esta red con `*.r2.cloudflarestorage.com`) →
+  «prueba otra red o importa el GGUF con `ollama create`»; manifiesto inexistente; disco lleno.
+- Attack box sin URL → qué hacer (cuenta de HTB/THM, arrancarlo, pegar la URL). WSL sin instalar ya lo explicaba.
+
+**Academia con el modelo real** (por fin verificada; `qwen3:4b-instruct-2507`, esfuerzo medio, lección
+«Qué hace cada equipo»):
+- Rutas (5) → inscribirse → lección generada en **109 s** con las 4 secciones (Teoría, Para practicar,
+  Herramientas, Pregunta) y sin la respuesta.
+- Pistas: nivel 1 en 9 s (buena), nivel 2 en 21 s, nivel 3 en 63 s. **Fallos encontrados y arreglados**: la 2
+  decía «se llama ▒▒▒» (el filtro la tapó, pero la pista no servía) → ahora se reintenta una vez con el aviso;
+  la 3 repetía la cabecera «Pista de nivel 3…» → se quita.
+- Comprobar: respuesta mala → feedback del modelo en 24 s, didáctico y con la respuesta tapada; buena →
+  acierto local al momento.
+- Copiloto: «siguiente paso» 128 s (útil, pero confundió red/blue team: es un 4B); «Explícame esto» con una
+  salida de nmap, correcto y claro. El chat libre del copiloto no llegó a medirse: el sistema se quedó sin
+  memoria con Chrome abierto y se paró la prueba.
+- Esfuerzo *extra* en la Academia pide `think` al instruct: Ollama no da error, simplemente no razona.
 
 ## Desviaciones conscientes respecto a la spec
 - **API nativa de Ollama (`/api/chat`) en lugar de `/v1/chat/completions`.** Solo la nativa acepta
