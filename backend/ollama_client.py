@@ -20,7 +20,8 @@ from .config import KEEP_ALIVE, KEEP_ALIVE_EMBED, NUM_CTX_DEFECTO, NUM_THREAD
 
 
 class OllamaCaido(Exception):
-    """Ollama no responde en localhost:11434 (NFR-020)."""
+    """Ollama no responde en localhost:11434 (NFR-020), o la conexión se cortó a media respuesta
+    (Ollama cerrado, reiniciado o sin RAM): cualquier httpx.TransportError."""
 
 
 class ModeloFaltante(Exception):
@@ -157,7 +158,7 @@ class OllamaClient:
                 r = await c.get(path)
                 r.raise_for_status()
                 return r.json()
-        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout) as e:
+        except httpx.TransportError as e:  # sin conexión, cortada a media respuesta o sin datos
             raise OllamaCaido(str(e)) from e
 
     # --- salud / inventario ----------------------------------------------
@@ -180,7 +181,7 @@ class OllamaClient:
         try:
             async with self._client(timeout=30.0) as c:
                 await c.post("/api/generate", json={"model": etiqueta, "keep_alive": 0})
-        except httpx.ConnectError as e:
+        except httpx.TransportError as e:  # sin conexión, cortada a media respuesta o sin datos
             raise OllamaCaido(str(e)) from e
 
     async def asegurar_unico(self, etiqueta: str) -> bool:
@@ -201,7 +202,7 @@ class OllamaClient:
         try:
             async with self._client(timeout=httpx.Timeout(10.0, read=600.0)) as c:
                 r = await c.post("/api/embed", json=cuerpo)
-        except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+        except httpx.TransportError as e:  # sin conexión, cortada a media respuesta o sin datos
             raise OllamaCaido(str(e)) from e
         if r.status_code == 404:
             raise ModeloFaltante(normalizar(etiqueta))
@@ -230,7 +231,7 @@ class OllamaClient:
         try:
             async with self._client(timeout=600.0) as c:
                 r = await c.post(ruta, json=cuerpo)
-        except httpx.ConnectError as e:
+        except httpx.TransportError as e:  # sin conexión, cortada a media respuesta o sin datos
             raise OllamaCaido(str(e)) from e
         if r.status_code == 404:
             raise ModeloFaltante(etiqueta)
@@ -293,7 +294,7 @@ class OllamaClient:
                                 yield {**base, "message": {"role": "assistant", tipo: texto}}
                         if dato.get("done") and not piezas:
                             yield {**dato, "message": {"role": "assistant", "content": ""}}
-        except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+        except httpx.TransportError as e:  # sin conexión, cortada a media respuesta o sin datos
             raise OllamaCaido(str(e)) from e
 
     async def chat_completo(self, etiqueta: str, mensajes: list[dict[str, str]], opciones: dict[str, Any],
@@ -312,7 +313,7 @@ class OllamaClient:
         try:
             async with self._client(timeout=httpx.Timeout(10.0, read=900.0)) as c:
                 r = await c.post("/api/chat", json=cuerpo)
-        except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+        except httpx.TransportError as e:  # sin conexión, cortada a media respuesta o sin datos
             raise OllamaCaido(str(e)) from e
         if r.status_code == 404:
             raise ModeloFaltante(normalizar(etiqueta))
@@ -346,7 +347,7 @@ class OllamaClient:
                         if "error" in dato:
                             raise OllamaError(dato["error"])
                         yield dato
-        except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+        except httpx.TransportError as e:  # sin conexión, cortada a media respuesta o sin datos
             raise OllamaCaido(str(e)) from e
 
 

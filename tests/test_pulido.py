@@ -3,6 +3,7 @@ num_thread único, nomic-embed-text precalentado, Ollama que se corta a media re
 import json
 import time
 
+import httpx
 from fastapi.testclient import TestClient
 
 from backend.config import NUM_CTX_DEFECTO, NUM_THREAD
@@ -74,3 +75,77 @@ def test_sin_base_activa_no_carga_embeddings(tmp_path, fake):
     with TestClient(_app(tmp_path, fake, precargar=True)):
         assert _esperar(lambda: fake.chats)
     assert fake.embeds == []
+
+
+class _Corte(httpx.AsyncByteStream):
+    """Respuesta que manda un trozo y luego se corta (Ollama cerrado a media generación)."""
+
+    async def __aiter__(self):
+        yield b'{"message": {"role": "assistant", "content": "Primera parte"}, "done": false}\n'
+        raise httpx.RemoteProtocolError("peer closed connection without sending complete message body")
+
+
+def test_ollama_se_corta_a_media_respuesta(tmp_path, fake):
+    def handle(req):
+        if req.url.path == "/api/chat":
+            return httpx.Response(200, stream=_Corte())
+        return fake.handle(req)
+
+    app = create_app(db_path=tmp_path / "forja.db", ollama_transport=httpx.MockTransport(handle), token=TOKEN,
+                     precargar=False)
+    with TestClient(app) as client:
+        client.headers.update({"X-Forja-Token": TOKEN})
+        evs = eventos(client.post("/chat", json={"modo": "scripts", "tier": "pequeno", "esfuerzo": "bajo",
+                                                 "texto": "hazme un script"}).text)
+        err = [d for e, d in evs if e == "error"]
+        assert err and err[0]["codigo"] == "OLLAMA_CAIDO" and "media respuesta" in err[0]["mensaje"]
+        # Lo generado no se pierde: se guarda marcado como interrumpido.
+        sid = next(d for e, d in evs if e == "inicio")["sesion_id"]
+        msgs = client.get(f"/conversaciones/{sid}/mensajes").json()["mensajes"]
+        assert msgs[-1]["rol"] == "assistant" and msgs[-1]["contenido"].startswith("Primera parte")
+
+
+def test_ollama_apagado_mensaje_claro(client, fake):
+    fake.up = False
+    evs = eventos(client.post("/chat", json={"modo": "scripts", "tier": "pequeno", "esfuerzo": "bajo", "texto": "x"}).text)
+    err = [d for e, d in evs if e == "error"][0]
+    assert err["codigo"] == "OLLAMA_CAIDO" and "localhost:11434" in err["mensaje"]
+
+
+# --- Academia: lo que salió en la prueba con el modelo real (qwen3 4B instruct) -------------------------
+def test_pista_que_suelta_la_respuesta_se_reintenta_y_sin_cabecera(tmp_path, fake):
+    from tests.test_academia import SIN_WSL, declarar
+    app = create_app(db_path=tmp_path / "forja.db", ollama_transport=fake.transport(), precargar=False,
+                     token=TOKEN, lab_detector=SIN_WSL)
+    with TestClient(app) as c:
+        c.headers.update({"X-Forja-Token": TOKEN})
+        c.post("/academia/enrolar", json={"path_id": 4})
+        declarar(c)
+        fake.respuesta = ["Pista de nivel 1 (empujón):\n", "El protocolo se llama Kerberos."]
+        antes = len(fake.chats)
+        p = c.post("/academia/pista", json={"seccion_id": 17}).json()
+        assert len(fake.chats) - antes == 2                           # borrador con la respuesta → reintento
+        assert "IMPORTANTE" in fake.chats[-1]["messages"][-1]["content"]
+        assert "kerberos" not in p["texto"].lower() and not p["texto"].lower().startswith("pista de nivel")
+        fake.respuesta = ["Piensa en quién emite los tickets."]
+        antes = len(fake.chats)
+        c.post("/academia/pista", json={"seccion_id": 17})
+        assert len(fake.chats) - antes == 1                           # sin fuga, una sola llamada
+
+
+def test_attackbox_sin_url_explica_que_hacer():
+    from backend.modes.laboratorio import LabError, Laboratorio
+    try:
+        Laboratorio._validar_url("")
+    except LabError as e:
+        assert e.codigo == "ATTACKBOX_SIN_URL" and "TryHackMe" in e.mensaje
+    else:
+        raise AssertionError("una URL vacía debe dar ATTACKBOX_SIN_URL")
+
+
+def test_descarga_que_no_avanza_explica_que_hacer():
+    from backend.main import mensaje_descarga
+    m = mensaje_descarga("Get \"https://x.r2.cloudflarestorage.com/...\": net/http: TLS handshake timeout", "nomic-embed-text")
+    assert "otra red" in m and "ollama create" in m and "nomic-embed-text" in m
+    assert "Ajustes › Modelos" in mensaje_descarga("pull model manifest: file does not exist", "qwen9:1b")
+    assert mensaje_descarga("algo raro", "x").startswith("Ollama no pudo descargar x")

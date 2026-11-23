@@ -332,6 +332,22 @@ class ConversacionPatch(BaseModel):
     project_id: int | None = None
 
 
+def mensaje_descarga(error: str, etiqueta: str) -> str:
+    """Errores de `ollama pull` con qué hacer. En la red de este equipo el blob (en *.r2.cloudflarestorage.com)
+    da timeout: se puede descargar el GGUF por otra vía e importarlo con `ollama create`."""
+    e = error.lower()
+    if any(x in e for x in ("timeout", "timed out", "deadline", "tls handshake", "no such host", "connection reset",
+                            "cloudflarestorage")):
+        return (f"La descarga de {etiqueta} no avanza: el registro de Ollama no responde desde esta red ({error}). "
+                "Prueba otra red (p. ej. datos del móvil) o descarga el GGUF del modelo e impórtalo con "
+                "`ollama create`. Lo descargado se conserva: al reintentar, sigue donde iba.")
+    if "file does not exist" in e or ("manifest" in e and "not found" in e):
+        return f"Ollama no encuentra {etiqueta} en su registro: revisa la etiqueta en Ajustes › Modelos."
+    if "no space" in e or ("disk" in e and "full" in e):
+        return f"No queda espacio en disco para {etiqueta}. Libera espacio y vuelve a pulsar Descargar."
+    return f"Ollama no pudo descargar {etiqueta}: {error}"
+
+
 def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTransport | None = None,
                precargar: bool = True, token: str | None = None, nube: ClienteNube | None = None,
                lab_detector: dict[str, Any] | None = None, abrir_carpeta=None) -> FastAPI:
@@ -589,9 +605,10 @@ def create_app(db_path: Path | None = None, ollama_transport: httpx.AsyncBaseTra
                                                         "segundos": round(time.monotonic() - inicio)})
                 yield sse("fin", {"alias": fila["alias"], "etiqueta": fila["etiqueta"]})
             except OllamaCaido:
-                yield sse("error", {"codigo": "OLLAMA_CAIDO", "mensaje": "Ollama no responde."})
+                yield sse("error", {"codigo": "OLLAMA_CAIDO", "mensaje": "Ollama no responde en localhost:11434. "
+                                    "Arráncalo con «Arrancar Ollama» y vuelve a pulsar Descargar."})
             except OllamaError as e:
-                yield sse("error", {"codigo": "OLLAMA_ERROR", "mensaje": str(e)})
+                yield sse("error", {"codigo": "OLLAMA_ERROR", "mensaje": mensaje_descarga(str(e), fila["etiqueta"])})
 
         return StreamingResponse(progreso(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 

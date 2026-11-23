@@ -180,6 +180,10 @@ class Laboratorio:
     @staticmethod
     def _validar_url(url: str) -> str:
         url = (url or "").strip()
+        if not url:
+            raise LabError(400, "ATTACKBOX_SIN_URL", "Aún no has puesto la URL de tu attack box. Inicia sesión en tu "
+                                                     "cuenta de Hack The Box o TryHackMe, arranca el attack box y pega "
+                                                     "aquí su dirección (https://…).")
         partes = urlsplit(url)
         if partes.scheme != "https" or not partes.hostname:
             raise LabError(400, "URL_INVALIDA", "La URL del attack box debe empezar por https://")

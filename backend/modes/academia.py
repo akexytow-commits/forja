@@ -76,6 +76,11 @@ def ocultar_respuesta(texto: str, esperada: str | None) -> str:
     return texto
 
 
+def sin_cabecera_pista(texto: str) -> str:
+    """El modelo a veces repite «Pista de nivel 3 (más detalle):» al principio: la UI ya lo muestra."""
+    return re.sub(r"^\s*\**\s*pista(?: de)? nivel \d[^\n]*\n+", "", texto, count=1, flags=re.IGNORECASE)
+
+
 def sin_bloques_codigo(texto: str) -> str:
     return re.sub(r"```.*?(```|$)", "_(sin código en este nivel de pista: inténtalo tú primero)_", texto, flags=re.DOTALL)
 
@@ -348,8 +353,14 @@ class Academia:
                   + ("Pistas ya dadas:\n" + "\n".join(f"- {p}" for p in previas) + "\n" if previas else "")
                   + (f"Lo que dice el alumno: {duda}\n" if duda else "")
                   + instruccion + " No repitas las pistas anteriores. Responde solo con la pista.")
-        texto = await self._completo(self._system(tier, esfuerzo, self._etiqueta(tier)), pedido, tier, esfuerzo,
-                                     "pista")
+        system = self._system(tier, esfuerzo, self._etiqueta(tier))
+        texto = sin_cabecera_pista(await self._completo(system, pedido, tier, esfuerzo, "pista"))
+        if ocultar_respuesta(texto, s["respuesta_esperada"]) != texto:
+            # Probado con qwen3 4B real: en preguntas de una palabra la pista 2 decía «se llama ▒▒▒» (tapada, pero
+            # inútil). Un reintento con el aviso explícito; si vuelve a soltarla, se tapa igualmente.
+            texto = sin_cabecera_pista(await self._completo(
+                system, pedido + "\n\nIMPORTANTE: tu borrador anterior contenía la respuesta. No la escribas ni la "
+                "completes («se llama…»): orienta con el concepto, la función o una pregunta.", tier, esfuerzo, "pista"))
         if nivel < 3:
             texto = sin_bloques_codigo(texto)
         texto = ocultar_respuesta(texto, s["respuesta_esperada"]).strip() or "Repasa la teoría de la lección."

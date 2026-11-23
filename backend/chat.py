@@ -485,7 +485,12 @@ class MotorChat:
             yield error("MODELO_FALTANTE", f"El modelo {e.etiqueta} no está descargado.",
                         etiqueta=e.etiqueta, alias=plan.alias if plan else None)
         except OllamaCaido:
-            yield error("OLLAMA_CAIDO", "Se perdió la conexión con Ollama.")
+            if contenido or thinking:
+                yield error("OLLAMA_CAIDO", "Ollama se cortó a media respuesta (¿se cerró o se quedó sin RAM?). Lo "
+                            "generado se ha guardado. Arráncalo en Estado del sistema y vuelve a enviar.")
+            else:
+                yield error("OLLAMA_CAIDO", "Ollama no responde en localhost:11434. Arráncalo en Estado del sistema "
+                            "y vuelve a enviar.")
         except OllamaError as e:
             yield error("OLLAMA_ERROR", f"Ollama devolvió un error: {e}")
         except NubeError as e:
